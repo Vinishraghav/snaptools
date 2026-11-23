@@ -67,6 +67,14 @@ export default function Footer() {
             </div>
             <span className="font-bold text-neutral-900 dark:text-white">OmniTools</span>
             <span>&copy; 2026 All rights reserved.</span>
+            <span className="hidden md:inline text-neutral-400">&bull;</span>
+            <span className="hidden md:inline">Feedback:</span>
+            <a
+              href="mailto:vinish523@gmail.com"
+              className="hidden md:inline text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            >
+              vinish523@gmail.com
+            </a>
           </div>
 
           <div className="flex flex-wrap items-center gap-6">

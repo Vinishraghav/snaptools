@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { TOOLS_REGISTRY, getToolBySlug, getRelatedTools, ToolDef } from '@/data/toolsRegistry';
 import ToolHost from '@/components/tools/ToolHost';
 import AdSlot from '@/components/ads/AdSlot';
+import FeedbackWidget from '@/components/feedback/FeedbackWidget';
 import {
   ChevronRight,
   ShieldCheck,
@@ -276,6 +277,9 @@ export default async function ToolPage({ params }: ToolPageProps) {
           </div>
         </div>
       </article>
+
+      {/* Developer Feedback Section routing to vinish523@gmail.com */}
+      <FeedbackWidget toolName={tool.title} toolSlug={tool.slug} />
 
       {/* Related Tools Internal Links */}
       {relatedTools.length > 0 && (
