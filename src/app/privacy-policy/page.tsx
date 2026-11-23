@@ -1,11 +1,12 @@
 import React from 'react';
 import { Metadata } from 'next';
-import { ShieldCheck, Lock, EyeOff } from 'lucide-react';
+import { ShieldCheck, Lock, EyeOff, Cookie, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy - OmniTools',
+  title: 'Privacy Policy - SnapTools',
   description:
-    'Read the official OmniTools Privacy Policy. Detailed explanation of our 100% client-side zero-upload data architecture and Google AdSense cookie guidelines.',
+    'Read the official SnapTools Privacy Policy. Detailed explanation of our 100% client-side zero-upload data architecture and Google AdSense compliance policies.',
 };
 
 export default function PrivacyPolicyPage() {
@@ -13,13 +14,13 @@ export default function PrivacyPolicyPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8 text-neutral-800 dark:text-neutral-200">
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">
-          <ShieldCheck className="w-3.5 h-3.5" /> Zero Data Storage Guarantee
+          <ShieldCheck className="w-3.5 h-3.5" /> 100% Client-Side Privacy Guarantee
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-neutral-950 dark:text-white tracking-tight">
           Privacy Policy
         </h1>
         <p className="text-xs text-neutral-500">
-          Last updated: November 2026
+          Effective Date: November 2026 | Compliant with Google AdSense Policies, GDPR &amp; CCPA
         </p>
       </div>
 
@@ -27,59 +28,93 @@ export default function PrivacyPolicyPage() {
         <Lock className="w-6 h-6 text-emerald-600 mt-1 shrink-0" />
         <div className="text-xs leading-relaxed text-emerald-900 dark:text-emerald-200">
           <strong className="block text-sm font-bold mb-1">Our Core Commitment to Your Privacy</strong>
-          OmniTools operates with a zero-database, zero-server-upload architecture. When you upload a PDF, image, audio file, or text payload into any of our 1,005 micro-tools, that file is processed strictly inside your device&apos;s local web browser memory. Your files and data never touch our servers or any third-party clouds.
+          SnapTools operates with a strict zero-database, zero-server-upload architecture. When you upload a PDF, image, audio file, or text payload into any of our 1,005 micro-tools, that file is processed strictly inside your device&apos;s local web browser memory (RAM) using HTML5 Canvas, WebAssembly, and native Web APIs. Your files and confidential data never leave your computer and are never transmitted to our servers or third-party clouds.
         </div>
       </div>
 
-      <div className="space-y-6 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
+      <div className="space-y-8 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
         <section className="space-y-2">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">1. Information We Do Not Collect</h2>
           <p>
-            Because we require zero user accounts and maintain no user databases, we do not collect:
+            Because SnapTools requires zero user accounts, zero logins, and maintains no backend databases, we do not collect:
           </p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Names, home addresses, or phone numbers</li>
-            <li>Uploaded PDF files, images, documents, or video files</li>
-            <li>Calculated financial inputs (salaries, loan amounts, GST figures)</li>
-            <li>Plaintext passwords, cryptographic keys, or generated secrets</li>
+            <li>Personal identifiers (names, physical addresses, phone numbers).</li>
+            <li>Uploaded files, PDFs, spreadsheets, images, audio, or video files.</li>
+            <li>Financial inputs entered into calculators (salaries, mortgage values, loan amounts, GST figures).</li>
+            <li>Plaintext passwords, cryptographic keys, or generated secret credentials.</li>
           </ul>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-neutral-900 dark:text-white">2. Local Storage Usage</h2>
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">2. Browser Local Storage</h2>
           <p>
-            We use your browser&apos;s standard <code>localStorage</code> solely for convenience features:
+            We use your browser&apos;s local storage (<code>localStorage</code>) exclusively for client-side user experience preferences:
           </p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Saving your list of &ldquo;Recently Used Tools&rdquo; and &ldquo;Saved Favorites&rdquo; locally on your computer.</li>
+            <li>Preserving your list of &ldquo;Recently Used Tools&rdquo; and &ldquo;Saved Favorites&rdquo; locally on your machine.</li>
+            <li>Storing your dark/light theme preference.</li>
             <li>Remembering your Cookie Consent preference.</li>
           </ul>
           <p>
-            This data never leaves your browser and can be cleared at any time through your browser settings.
+            This data remains entirely on your physical device and can be cleared at any time via your browser settings.
+          </p>
+        </section>
+
+        <section className="space-y-3 p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2 text-sm font-bold text-neutral-900 dark:text-white">
+            <Cookie className="w-4 h-4 text-amber-500" />
+            <h3>3. Google AdSense &amp; Third-Party Advertising Policy Compliance</h3>
+          </div>
+          <p>
+            This website is monetized through <strong>Google AdSense</strong> to ensure all 1,005 micro-tools remain 100% free forever. In accordance with Google&apos;s official Publisher Policies, please note the following disclosure:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li>
+              <strong>Third-Party Vendors:</strong> Third-party vendors, including Google, use cookies to serve ads based on a user&apos;s prior visits to this website or other websites on the internet.
+            </li>
+            <li>
+              <strong>DoubleClick / Advertising Cookies:</strong> Google&apos;s use of advertising cookies enables it and its partners to serve personalized or contextual advertisements to users based on their visits to SnapTools and other websites across the web.
+            </li>
+            <li>
+              <strong>Opting Out of Personalized Advertising:</strong> Users may opt out of personalized advertising by visiting the official <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">Google Ads Settings</a> page.
+            </li>
+            <li>
+              <strong>Third-Party Ad Network Opt-Out:</strong> Alternatively, users can opt out of a third-party vendor&apos;s use of cookies for personalized advertising by visiting <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">www.aboutads.info</a> or <a href="https://www.networkadvertising.org/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">Network Advertising Initiative (NAI)</a>.
+            </li>
+          </ul>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">4. GDPR and CCPA / CPRA Privacy Rights</h2>
+          <p>
+            Under the European Union General Data Protection Regulation (GDPR) and California Consumer Privacy Act (CCPA / CPRA):
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>You have the right to request deletion of personal information (since we store none, your privacy is preserved by architecture).</li>
+            <li>We do not sell, rent, or trade user personal information to any third parties.</li>
+            <li>You can manage or decline advertising cookies at any time via our Cookie Consent banner.</li>
+          </ul>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">5. Children&apos;s Information Protection (COPPA)</h2>
+          <p>
+            SnapTools does not knowingly collect any personally identifiable information from children under the age of 13. All educational utilities (calculators, unit converters, citation generators) process data entirely client-side without registration.
           </p>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-neutral-900 dark:text-white">3. Google AdSense &amp; Third-Party Cookies</h2>
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">6. Changes to this Privacy Policy</h2>
           <p>
-            We partner with Google AdSense to serve advertisements when you visit our website. Google, as a third-party vendor, uses cookies to serve ads based on your prior visits to our website or other websites on the internet.
-          </p>
-          <p>
-            Google&apos;s use of advertising cookies enables it and its partners to serve ads to you based on your visit to our sites and/or other sites on the Internet. Users may opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline">Google Ads Settings</a>.
+            We may update our Privacy Policy periodically. Any modifications will be reflected on this page with an updated revision date.
           </p>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-neutral-900 dark:text-white">4. GDPR and CCPA Compliance</h2>
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">7. Contact &amp; Inquiries</h2>
           <p>
-            Under GDPR (General Data Protection Regulation) and CCPA (California Consumer Privacy Act), users have the right to access, delete, or limit the collection of personal information. Because OmniTools does not collect, sell, or store personal identifiers or user content, your privacy is intrinsically safeguarded by design.
-          </p>
-        </section>
-
-        <section className="space-y-2">
-          <h2 className="text-base font-bold text-neutral-900 dark:text-white">5. Contact Regarding Privacy</h2>
-          <p>
-            If you have questions regarding this Privacy Policy, please contact our privacy compliance team via our <a href="/contact" className="text-blue-600 dark:text-blue-400 underline">Contact Page</a>.
+            If you have questions regarding this Privacy Policy or Google AdSense disclosures, reach out directly via our <Link href="/contact" className="text-amber-600 dark:text-amber-400 font-semibold underline">Contact Support Portal</Link>.
           </p>
         </section>
       </div>

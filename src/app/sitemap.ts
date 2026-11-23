@@ -3,7 +3,7 @@ import { TOOLS_REGISTRY } from '@/data/toolsRegistry';
 import { CATEGORIES } from '@/data/categories';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://omnitools.app';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://snaptools.app';
   const now = new Date('2026-11-23T00:00:00.000Z');
 
   // 1. Core pages

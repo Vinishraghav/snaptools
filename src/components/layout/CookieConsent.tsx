@@ -8,19 +8,19 @@ export default function CookieConsent() {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('omnitools_cookie_consent');
+    const consent = localStorage.getItem('snaptools_cookie_consent');
     if (!consent) {
       setShowBanner(true);
     }
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem('omnitools_cookie_consent', 'accepted');
+    localStorage.setItem('snaptools_cookie_consent', 'accepted');
     setShowBanner(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem('omnitools_cookie_consent', 'declined');
+    localStorage.setItem('snaptools_cookie_consent', 'declined');
     setShowBanner(false);
   };
 

@@ -1,9 +1,10 @@
 import React from 'react';
 import { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service - OmniTools',
-  description: 'Read the terms of service and acceptable usage policy for the OmniTools platform.',
+  title: 'Terms of Service - SnapTools',
+  description: 'Read the terms of service and acceptable usage policy for the SnapTools multi-utility platform.',
 };
 
 export default function TermsPage() {
@@ -22,28 +23,42 @@ export default function TermsPage() {
         <section className="space-y-2">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">1. Acceptance of Terms</h2>
           <p>
-            By accessing or using OmniTools, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site.
+            By accessing or using SnapTools (&ldquo;the Platform&rdquo;), you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site.
           </p>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">2. Use License &amp; Free Access</h2>
           <p>
-            Permission is granted to use all 1,005 micro-tools available on OmniTools for personal, educational, and commercial purposes completely free of charge. You agree not to attempt to reverse engineer or disrupt the platform infrastructure.
+            Permission is granted to use all 1,005 micro-tools available on SnapTools for personal, educational, professional, and commercial purposes completely free of charge. You agree not to attempt to reverse engineer, disrupt, scrap excessively, or overload the platform infrastructure.
           </p>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">3. Disclaimer of Warranties</h2>
           <p>
-            All tools, calculations, and conversions provided on OmniTools are provided on an &ldquo;as is&rdquo; and &ldquo;as available&rdquo; basis without warranties of any kind, whether express or implied. Financial calculations, tax estimators, and unit conversions should be independently verified for critical accounting or life-safety applications.
+            All tools, calculations, PDF manipulation engines, image compressors, and unit conversions provided on SnapTools are provided on an &ldquo;as is&rdquo; and &ldquo;as available&rdquo; basis without warranties of any kind, whether express or implied. Financial calculations, tax estimators, construction metrics, and medical/health figures should be independently verified for critical accounting or life-safety applications.
           </p>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-bold text-neutral-900 dark:text-white">4. Limitation of Liability</h2>
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">4. Client-Side Processing Acknowledgment</h2>
           <p>
-            In no event shall OmniTools or its creators be liable for any damages arising out of the use or inability to use the tools or materials on the platform.
+            You acknowledge that all file processing (PDFs, images, videos, audio) occurs entirely inside your local browser memory using WebAssembly, HTML5 Canvas, and Web APIs. SnapTools does not store, backup, or recover your processed files once your browser session is closed.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">5. Limitation of Liability</h2>
+          <p>
+            In no event shall SnapTools or its development team be liable for any indirect, incidental, or consequential damages arising out of the use or inability to use the tools or materials on the platform.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white">6. Inquiries &amp; Support</h2>
+          <p>
+            For legal inquiries or questions regarding these Terms, please contact our team via the <Link href="/contact" className="text-amber-600 dark:text-amber-400 font-semibold underline">Contact Support Portal</Link>.
           </p>
         </section>
       </div>
