@@ -14,6 +14,8 @@ import {
   ArrowRight,
   Lock,
   CheckCircle,
+  Search,
+  Check,
 } from 'lucide-react';
 
 interface ToolPageProps {
@@ -31,13 +33,23 @@ export async function generateMetadata({ params }: ToolPageProps): Promise<Metad
   const tool = getToolBySlug(slug);
   if (!tool) return {};
 
-  const title = `${tool.title} - Free Online Client-Side Tool`;
-  const description = `${tool.description} Fast, secure, and private browser-based utility. Zero file uploads, 100% free.`;
+  const cleanTitle = tool.title;
+  const title = `${cleanTitle} - Free Online Tool | Instant & Private`;
+  const description = `Use our free online ${cleanTitle}. 100% client-side processing in your browser with zero file uploads and zero wait times. Try ${cleanTitle} free now!`;
 
   return {
     title,
     description,
-    keywords: [...tool.keywords, 'free online tool', 'client side', tool.categoryName],
+    keywords: [
+      ...tool.keywords,
+      cleanTitle.toLowerCase(),
+      `${cleanTitle.toLowerCase()} online`,
+      `${cleanTitle.toLowerCase()} free`,
+      'client side tool',
+      'no file upload',
+      'free web utility',
+      tool.categoryName.toLowerCase(),
+    ],
     alternates: {
       canonical: `https://omnitools.app/tools/${tool.slug}`,
     },
@@ -47,6 +59,7 @@ export async function generateMetadata({ params }: ToolPageProps): Promise<Metad
       url: `https://omnitools.app/tools/${tool.slug}`,
       siteName: 'OmniTools',
       type: 'website',
+      locale: 'en_US',
     },
     twitter: {
       card: 'summary_large_image',
@@ -66,7 +79,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
 
   const relatedTools = getRelatedTools(tool, 6);
 
-  // Structured JSON-LD Schema (WebApplication + FAQPage)
+  // Triple-layer Structured JSON-LD Schema (WebApplication + BreadcrumbList + FAQPage)
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -76,13 +89,37 @@ export default async function ToolPage({ params }: ToolPageProps) {
         url: `https://omnitools.app/tools/${tool.slug}`,
         description: tool.description,
         applicationCategory: 'UtilityApplication',
-        operatingSystem: 'Any',
+        operatingSystem: 'All',
+        browserRequirements: 'Requires HTML5 and modern JavaScript support',
         offers: {
           '@type': 'Offer',
           price: '0',
           priceCurrency: 'USD',
         },
         featureList: tool.features.join(', '),
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: 'https://omnitools.app',
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: tool.categoryName,
+            item: `https://omnitools.app/category/${tool.category}`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: tool.title,
+            item: `https://omnitools.app/tools/${tool.slug}`,
+          },
+        ],
       },
       {
         '@type': 'FAQPage',
@@ -127,6 +164,8 @@ export default async function ToolPage({ params }: ToolPageProps) {
           <span>{tool.categoryName}</span>
           <span>&bull;</span>
           <span className="text-neutral-400 font-mono">Tool #{tool.id}</span>
+          <span>&bull;</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-medium">100% Free &amp; Private</span>
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-extrabold text-neutral-950 dark:text-white tracking-tight">
@@ -134,7 +173,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
         </h1>
 
         <p className="text-base text-neutral-600 dark:text-neutral-400 max-w-3xl leading-relaxed">
-          {tool.description} Runs 100% locally in your web browser with complete client-side security and zero server uploads.
+          {tool.description} Operates 100% locally in your browser with complete client-side security and zero server uploads.
         </p>
       </div>
 
@@ -149,7 +188,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
       {/* In-Content AdSlot */}
       <AdSlot slotId={`tool-mid-${tool.id}`} format="horizontal" />
 
-      {/* Comprehensive 300+ Word SEO Guide & How to Use */}
+      {/* Comprehensive 400+ Word SEO Guide & How to Use (AdSense High Quality Content) */}
       <article className="p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-8 text-neutral-800 dark:text-neutral-200">
         <div>
           <h2 className="text-xl font-bold text-neutral-950 dark:text-white mb-4">
@@ -187,9 +226,35 @@ export default async function ToolPage({ params }: ToolPageProps) {
           <h2 className="text-xl font-bold text-neutral-950 dark:text-white mb-3">
             Why Choose Our Client-Side {tool.title}?
           </h2>
-          <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 mb-3">
             Unlike traditional cloud tools that require uploading your private files, documents, or data payloads to third-party web servers, our <strong>{tool.title}</strong> is executed entirely inside your local device memory using Web APIs, HTML5 Canvas, and WebAssembly. This architecture guarantees total confidentiality for sensitive company data, personal photos, and business documents. Furthermore, because zero network round-trips are required for processing, calculations and transformations happen instantaneously with virtually zero latency.
           </p>
+          <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+            Whether you are on a mobile device, tablet, laptop, or desktop workstation, OmniTools delivers unthrottled performance with no rate limits, no daily file caps, and no registration hurdles.
+          </p>
+        </div>
+
+        {/* Common Use Cases & Search Queries for Google SEO */}
+        <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 space-y-3">
+          <h3 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+            <Search className="w-4 h-4 text-blue-600" /> Popular Use Cases for this Tool
+          </h3>
+          <div className="flex flex-wrap gap-2 text-xs">
+            {tool.keywords.map((kw, i) => (
+              <span
+                key={i}
+                className="px-3 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400"
+              >
+                #{kw}
+              </span>
+            ))}
+            <span className="px-3 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400">
+              #free-{tool.slug}
+            </span>
+            <span className="px-3 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400">
+              #online-utility
+            </span>
+          </div>
         </div>
 
         {/* Structured FAQ Section */}
