@@ -5,15 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Search,
-  Wrench,
   Bookmark,
   Clock,
   ChevronDown,
   X,
   ExternalLink,
   Layers,
-  Sparkles
+  Sparkles,
+  Heart,
 } from 'lucide-react';
+import Logo from '@/components/brand/Logo';
 import { TOOLS_REGISTRY, ToolDef } from '@/data/toolsRegistry';
 import { CATEGORIES } from '@/data/categories';
 
@@ -88,20 +89,8 @@ export default function Header() {
     <>
       <header className="sticky top-0 z-40 w-full border-b border-neutral-200/80 dark:border-neutral-800/80 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition">
-              <Wrench className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-neutral-900 via-blue-900 to-indigo-900 dark:from-white dark:via-blue-200 dark:to-indigo-300 bg-clip-text text-transparent">
-                OmniTools
-              </span>
-              <span className="hidden sm:inline-block ml-1.5 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300">
-                1,005 Free Tools
-              </span>
-            </div>
-          </Link>
+          {/* Handcrafted Brand Logo */}
+          <Logo />
 
           {/* Quick Search trigger (desktop) */}
           <button

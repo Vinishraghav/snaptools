@@ -17,16 +17,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://omnitools.app'),
+  metadataBase: new URL('https://snaptools.app'),
   title: {
-    default: 'OmniTools - 1,005 Free Client-Side Micro-Tools & Utilities',
-    template: '%s | OmniTools',
+    default: 'SnapTools - 1,005 Free Handcrafted Client-Side Micro-Tools',
+    template: '%s | SnapTools',
   },
   description:
-    'Instant, 100% free, and client-side multi-utility platform with 1,005 specialized micro-tools for PDF, images, audio, coding, data, finance, health, and conversions. Zero uploads, zero database.',
+    'The internet’s friendly pocketknife. 1,005 handcrafted, 100% client-side micro-tools for PDF, image optimization, developer code, data, finance, health, and unit conversions. Zero file uploads, zero accounts.',
   keywords: [
+    'snaptools',
     'free online tools',
-    'client side pdf merge',
+    'client side pdf compress',
     'image compressor',
     'emi calculator',
     'qr code generator',
@@ -34,19 +35,19 @@ export const metadata: Metadata = {
     'unit converter',
     'web utilities',
   ],
-  authors: [{ name: 'OmniTools Team' }],
+  authors: [{ name: 'Vinish', url: 'https://snaptools.app' }],
   openGraph: {
-    title: 'OmniTools - 1,005 Free Client-Side Micro-Tools',
-    description: 'Blazing fast, 100% private, client-side online tools running entirely in your browser.',
-    url: 'https://omnitools.app',
-    siteName: 'OmniTools',
+    title: 'SnapTools - 1,005 Free Handcrafted Micro-Tools',
+    description: 'The internet’s friendly pocketknife. Fast, private, and 100% free forever.',
+    url: 'https://snaptools.app',
+    siteName: 'SnapTools',
     locale: 'en_US',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'OmniTools - 1,005 Free Client-Side Micro-Tools',
-    description: '100% client-side privacy. Zero file uploads. 1,005 tools.',
+    title: 'SnapTools - 1,005 Free Handcrafted Micro-Tools',
+    description: '100% client-side privacy. Zero file uploads. Handcrafted by Vinish.',
   },
 };
 

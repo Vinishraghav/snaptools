@@ -73,22 +73,22 @@ export default function HomePage() {
   return (
     <div className="space-y-12 pb-16">
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24 border-b border-neutral-200/80 dark:border-neutral-800/80 bg-gradient-to-b from-blue-50/40 via-white to-transparent dark:from-blue-950/20 dark:via-neutral-950 dark:to-neutral-950">
+      <section className="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24 border-b border-neutral-200/80 dark:border-neutral-800/80 bg-gradient-to-b from-amber-50/30 via-white to-transparent dark:from-neutral-900 dark:via-neutral-950 dark:to-neutral-950">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100/80 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span>1,005 Production Micro-Tools &bull; 100% Client-Side Privacy</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Handcrafted by Vinish &bull; 1,005 Free Micro-Tools &bull; Zero Uploads</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-neutral-950 dark:text-white leading-[1.1]">
-            Every Micro-Tool You Need, <br className="hidden sm:inline" />
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
-              Zero Uploads, 100% Free
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-neutral-950 dark:text-white leading-[1.15]">
+            The Internet&apos;s Friendly Pocketknife.{' '}
+            <span className="block bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 bg-clip-text text-transparent">
+              Fast, Private, and Free Forever.
             </span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-base sm:text-lg text-neutral-600 dark:text-neutral-400">
-            High-speed PDF editors, image optimizers, financial calculators, code formatters, unit converters, and hardware testers running purely in your browser memory.
+          <p className="max-w-2xl mx-auto text-base sm:text-lg text-neutral-600 dark:text-neutral-400 leading-relaxed">
+            Tired of spammy websites that demand sign-ups or upload your private PDFs and photos to unknown servers? We handcrafted 1,005 client-side utilities that run right in your browser memory.
           </p>
 
           {/* Instant Search Bar */}

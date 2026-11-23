@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { CATEGORIES } from '@/data/categories';
-import { Wrench, Shield, Zap, Lock, Heart } from 'lucide-react';
+import { Shield, Zap, Lock, Heart, Coffee } from 'lucide-react';
+import Logo from '@/components/brand/Logo';
 
 export default function Footer() {
   return (
@@ -60,21 +61,9 @@ export default function Footer() {
         </div>
 
         {/* Legal & Policy Links */}
-        <div className="mt-12 pt-8 border-t border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
-              O
-            </div>
-            <span className="font-bold text-neutral-900 dark:text-white">OmniTools</span>
-            <span>&copy; 2026 All rights reserved.</span>
-            <span className="hidden md:inline text-neutral-400">&bull;</span>
-            <span className="hidden md:inline">Feedback:</span>
-            <a
-              href="mailto:vinish523@gmail.com"
-              className="hidden md:inline text-blue-600 dark:text-blue-400 hover:underline font-medium"
-            >
-              vinish523@gmail.com
-            </a>
+        <div className="mt-12 pt-8 border-t border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <Logo showTagline={true} />
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
@@ -88,8 +77,22 @@ export default function Footer() {
               Terms of Service
             </Link>
             <Link href="/contact" className="hover:text-neutral-900 dark:hover:text-white transition">
-              Contact & Feedback
+              Contact &amp; Feedback
             </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-neutral-200/60 dark:border-neutral-800/60 flex flex-col sm:flex-row items-center justify-between text-[11px] text-neutral-400 gap-2">
+          <div className="flex items-center gap-1.5">
+            <span>Handmade with care by Vinish</span>
+            <span>&bull;</span>
+            <span>&copy; 2026 SnapTools. All rights reserved.</span>
+          </div>
+          <div>
+            <span>Direct questions: </span>
+            <a href="mailto:vinish523@gmail.com" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">
+              vinish523@gmail.com
+            </a>
           </div>
         </div>
       </div>
