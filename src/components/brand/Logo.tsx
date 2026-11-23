@@ -77,7 +77,7 @@ export default function Logo({ className = '', showTagline = false }: LogoProps)
         </div>
         {showTagline ? (
           <span className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
-            Handmade by Vinish &bull; 1,005 Free Tools
+            1,005 Fast &amp; Private Micro-Tools
           </span>
         ) : (
           <span className="text-[10px] text-neutral-400 font-mono tracking-wider uppercase">

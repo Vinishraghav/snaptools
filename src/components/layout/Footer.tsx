@@ -84,15 +84,14 @@ export default function Footer() {
 
         <div className="mt-6 pt-4 border-t border-neutral-200/60 dark:border-neutral-800/60 flex flex-col sm:flex-row items-center justify-between text-[11px] text-neutral-400 gap-2">
           <div className="flex items-center gap-1.5">
-            <span>Handmade with care by Vinish</span>
+            <span>Crafted with care by the SnapTools Team</span>
             <span>&bull;</span>
             <span>&copy; 2026 SnapTools. All rights reserved.</span>
           </div>
           <div>
-            <span>Direct questions: </span>
-            <a href="mailto:vinish523@gmail.com" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">
-              vinish523@gmail.com
-            </a>
+            <Link href="/contact" className="text-amber-600 dark:text-amber-400 hover:underline font-medium">
+              Have questions or suggestions? Contact Support &rarr;
+            </Link>
           </div>
         </div>
       </div>

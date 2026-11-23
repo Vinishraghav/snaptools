@@ -278,7 +278,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
         </div>
       </article>
 
-      {/* Developer Feedback Section routing to vinish523@gmail.com */}
+      {/* Developer Feedback Section */}
       <FeedbackWidget toolName={tool.title} toolSlug={tool.slug} />
 
       {/* Related Tools Internal Links */}

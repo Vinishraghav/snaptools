@@ -8,8 +8,7 @@ import {
   Sparkles,
   Send,
   CheckCircle2,
-  Mail,
-  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface FeedbackWidgetProps {
@@ -18,7 +17,7 @@ interface FeedbackWidgetProps {
 }
 
 export default function FeedbackWidget({
-  toolName = 'OmniTools Platform',
+  toolName = 'SnapTools Platform',
   toolSlug = 'general',
 }: FeedbackWidgetProps) {
   const [rating, setRating] = useState<'helpful' | 'unhelpful' | 'idea' | null>(null);
@@ -32,17 +31,16 @@ export default function FeedbackWidget({
     setSubmitting(true);
 
     try {
-      // Send via FormSubmit AJAX to vinish523@gmail.com
-      await fetch('https://formsubmit.co/ajax/vinish523@gmail.com', {
+      // Send via internal server-side proxy (keeps personal email 100% private)
+      await fetch('/api/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          _subject: `[OmniTools Feedback] - ${toolName}`,
-          tool: toolName,
-          slug: toolSlug,
+          toolName,
+          toolSlug,
           experience: rating || 'Not specified',
           message: feedbackText,
           senderEmail: userEmail || 'Anonymous',
@@ -50,29 +48,21 @@ export default function FeedbackWidget({
         }),
       });
     } catch {
-      // Fallback works gracefully even if network is offline
+      // Graceful fallback
     } finally {
       setSubmitting(false);
       setSubmitted(true);
     }
   };
 
-  const mailtoUrl = `mailto:vinish523@gmail.com?subject=${encodeURIComponent(
-    `[OmniTools Feedback] - ${toolName}`
-  )}&body=${encodeURIComponent(
-    `Tool: ${toolName}\nRating: ${rating || 'N/A'}\nFeedback: ${feedbackText}\nUser Email: ${userEmail}\nURL: ${
-      typeof window !== 'undefined' ? window.location.href : ''
-    }`
-  )}`;
-
   return (
     <section
       aria-label="User Feedback"
-      className="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-white via-neutral-50/80 to-blue-50/20 dark:from-neutral-900 dark:via-neutral-900 dark:to-blue-950/20 border border-neutral-200 dark:border-neutral-800 shadow-sm"
+      className="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-white via-neutral-50/80 to-amber-50/20 dark:from-neutral-900 dark:via-neutral-900 dark:to-amber-950/20 border border-neutral-200 dark:border-neutral-800 shadow-sm"
     >
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="text-center space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100/70 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100/70 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300">
             <MessageSquare className="w-3.5 h-3.5" />
             <span>Developer Feedback</span>
           </div>
@@ -80,13 +70,7 @@ export default function FeedbackWidget({
             Help Us Improve {toolName}
           </h2>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Send your thoughts, bug reports, or feature requests directly to{' '}
-            <a
-              href="mailto:vinish523@gmail.com"
-              className="text-blue-600 dark:text-blue-400 font-semibold underline underline-offset-2"
-            >
-              vinish523@gmail.com
-            </a>
+            Send your thoughts, bug reports, or feature requests directly to our engineering team.
           </p>
         </div>
 
@@ -98,17 +82,21 @@ export default function FeedbackWidget({
             <h3 className="text-base font-bold text-emerald-950 dark:text-emerald-100">
               Thank You for Your Feedback!
             </h3>
-            <p className="text-xs text-emerald-700 dark:text-emerald-300 max-w-md mx-auto">
-              Your feedback for <strong>{toolName}</strong> has been routed to{' '}
-              <strong>vinish523@gmail.com</strong>. We review every note to build better tools!
+            <p className="text-xs text-emerald-700 dark:text-emerald-300 max-w-md mx-auto leading-relaxed">
+              Your feedback for <strong>{toolName}</strong> has been securely delivered to our core developers. We review every note to build better tools!
             </p>
             <div className="pt-2">
-              <a
-                href={mailtoUrl}
-                className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmitted(false);
+                  setFeedbackText('');
+                  setRating(null);
+                }}
+                className="text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline"
               >
-                <Mail className="w-3.5 h-3.5" /> Send direct email via mail app
-              </a>
+                Submit another suggestion &rarr;
+              </button>
             </div>
           </div>
         ) : (
@@ -162,8 +150,8 @@ export default function FeedbackWidget({
                 rows={3}
                 value={feedbackText}
                 onChange={(e) => setFeedbackText(e.target.value)}
-                placeholder="What can we do to make this tool even better for you? (e.g. add new formats, fix calculation, etc.)"
-                className="w-full p-3.5 rounded-2xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                placeholder="What can we do to make this tool even better for you? (e.g. add new options, support other formats, etc.)"
+                className="w-full p-3.5 rounded-2xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
               />
             </div>
 
@@ -173,34 +161,32 @@ export default function FeedbackWidget({
                 type="email"
                 value={userEmail}
                 onChange={(e) => setUserEmail(e.target.value)}
-                placeholder="Your email (optional, for reply)"
-                className="w-full sm:w-2/3 px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                placeholder="Your email (optional, for follow-up)"
+                className="w-full sm:w-2/3 px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
               />
 
               <button
                 type="submit"
                 disabled={submitting || !feedbackText.trim()}
-                className="w-full sm:w-1/3 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-sm transition"
+                className="w-full sm:w-1/3 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-neutral-950 font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition"
               >
                 {submitting ? (
                   <span>Sending...</span>
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    <span>Send to Developer</span>
+                    <span>Send to Developers</span>
                   </>
                 )}
               </button>
             </div>
 
             <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-1">
-              <span>Recipient: vinish523@gmail.com</span>
-              <a
-                href={mailtoUrl}
-                className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-              >
-                Prefer email app? <ExternalLink className="w-3 h-3" />
-              </a>
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                Private &amp; encrypted delivery directly to engineering
+              </span>
+              <span>100% Client-Side Privacy</span>
             </div>
           </form>
         )}

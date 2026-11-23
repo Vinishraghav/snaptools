@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     'unit converter',
     'web utilities',
   ],
-  authors: [{ name: 'Vinish', url: 'https://snaptools.app' }],
+  authors: [{ name: 'SnapTools Team', url: 'https://snaptools.app' }],
   openGraph: {
     title: 'SnapTools - 1,005 Free Handcrafted Micro-Tools',
     description: 'The internet’s friendly pocketknife. Fast, private, and 100% free forever.',
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'SnapTools - 1,005 Free Handcrafted Micro-Tools',
-    description: '100% client-side privacy. Zero file uploads. Handcrafted by Vinish.',
+    description: '100% client-side privacy. Zero file uploads. Fast & reliable web utilities.',
   },
 };
 
