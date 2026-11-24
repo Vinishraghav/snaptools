@@ -6,6 +6,7 @@ import { CATEGORIES } from '@/data/categories';
 import { getToolsByCategory } from '@/data/toolsRegistry';
 import AdSlot from '@/components/ads/AdSlot';
 import { ChevronRight, ArrowRight, Layers, ShieldCheck, Zap } from 'lucide-react';
+import { SITE_URL, SITE_NAME } from '@/lib/siteConfig';
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -29,13 +30,13 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     title,
     description,
     alternates: {
-      canonical: `https://omnitools.app/category/${category.slug}`,
+      canonical: `${SITE_URL}/category/${category.slug}`,
     },
     openGraph: {
       title,
       description,
-      url: `https://omnitools.app/category/${category.slug}`,
-      siteName: 'OmniTools',
+      url: `${SITE_URL}/category/${category.slug}`,
+      siteName: SITE_NAME,
     },
   };
 }

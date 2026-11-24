@@ -11,7 +11,7 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
   const [targetHeight, setTargetHeight] = useState<number>(600);
   const [quality, setQuality] = useState<number>(85);
   const [filterType, setFilterType] = useState<string>('none');
-  const [watermark, setWatermark] = useState<string>('OmniTools');
+  const [watermark, setWatermark] = useState<string>('SnapTools');
   const [topMemeText, setTopMemeText] = useState<string>('WHEN THE CODE');
   const [bottomMemeText, setBottomMemeText] = useState<string>('WORKS FIRST TRY');
   const [asciiArt, setAsciiArt] = useState<string>('');

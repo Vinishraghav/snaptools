@@ -2,11 +2,15 @@ import React from 'react';
 import { Metadata } from 'next';
 import { ShieldCheck, Lock, EyeOff, Cookie, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import { SITE_URL } from '@/lib/siteConfig';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy - SnapTools',
   description:
     'Read the official SnapTools Privacy Policy. Detailed explanation of our 100% client-side zero-upload data architecture and Google AdSense compliance policies.',
+  alternates: {
+    canonical: `${SITE_URL}/privacy-policy`,
+  },
 };
 
 export default function PrivacyPolicyPage() {

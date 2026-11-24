@@ -1,10 +1,14 @@
 import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { SITE_URL } from '@/lib/siteConfig';
 
 export const metadata: Metadata = {
   title: 'Terms of Service - SnapTools',
   description: 'Read the terms of service and acceptable usage policy for the SnapTools multi-utility platform.',
+  alternates: {
+    canonical: `${SITE_URL}/terms`,
+  },
 };
 
 export default function TermsPage() {

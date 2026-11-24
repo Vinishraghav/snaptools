@@ -1,9 +1,10 @@
 import { MetadataRoute } from 'next';
 import { TOOLS_REGISTRY } from '@/data/toolsRegistry';
 import { CATEGORIES } from '@/data/categories';
+import { SITE_URL } from '@/lib/siteConfig';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://snaptools-app.vercel.app';
+  const baseUrl = SITE_URL;
   const now = new Date('2026-11-23T00:00:00.000Z');
 
   // 1. Core pages

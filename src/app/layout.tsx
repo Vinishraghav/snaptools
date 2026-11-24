@@ -5,6 +5,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import CookieConsent from '@/components/layout/CookieConsent';
 import Script from 'next/script';
+import { SITE_URL, SITE_NAME } from '@/lib/siteConfig';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://snaptools-app.vercel.app'),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'SnapTools - 1,005 Free Handcrafted Client-Side Micro-Tools',
     template: '%s | SnapTools',
@@ -35,12 +36,12 @@ export const metadata: Metadata = {
     'unit converter',
     'web utilities',
   ],
-  authors: [{ name: 'SnapTools Team', url: 'https://snaptools-app.vercel.app' }],
+  authors: [{ name: 'SnapTools Team', url: SITE_URL }],
   openGraph: {
     title: 'SnapTools - 1,005 Free Handcrafted Micro-Tools',
     description: 'The internet’s friendly pocketknife. Fast, private, and 100% free forever.',
-    url: 'https://snaptools-app.vercel.app',
-    siteName: 'SnapTools',
+    url: SITE_URL,
+    siteName: SITE_NAME,
     locale: 'en_US',
     type: 'website',
   },

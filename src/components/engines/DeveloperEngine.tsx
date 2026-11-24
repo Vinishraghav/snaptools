@@ -7,7 +7,7 @@ import { Copy, Check, Play, RefreshCw, Code2, Terminal, CheckCircle2, AlertCircl
 
 export default function DeveloperEngine({ tool }: { tool: ToolDef }) {
   const [inputCode, setInputCode] = useState(
-    '{\n  "name": "OmniTools",\n  "count": 1005,\n  "clientSide": true,\n  "categories": ["pdf", "image", "dev"]\n}'
+    '{\n  "name": "SnapTools",\n  "count": 1005,\n  "clientSide": true,\n  "categories": ["pdf", "image", "dev"]\n}'
   );
   const [outputCode, setOutputCode] = useState('');
   const [error, setError] = useState('');

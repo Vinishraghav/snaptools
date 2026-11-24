@@ -82,7 +82,7 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
           color: rgb(0.4, 0.4, 0.4),
         });
 
-        page.drawText('Generated securely 100% client-side with OmniTools.', {
+        page.drawText('Generated securely 100% client-side with SnapTools.', {
           x: 50,
           y: 50,
           size: 10,

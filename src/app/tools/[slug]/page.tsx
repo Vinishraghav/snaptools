@@ -6,6 +6,7 @@ import { TOOLS_REGISTRY, getToolBySlug, getRelatedTools, ToolDef } from '@/data/
 import ToolHost from '@/components/tools/ToolHost';
 import AdSlot from '@/components/ads/AdSlot';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
+import { SITE_URL, SITE_NAME } from '@/lib/siteConfig';
 import {
   ChevronRight,
   ShieldCheck,
@@ -52,13 +53,13 @@ export async function generateMetadata({ params }: ToolPageProps): Promise<Metad
       tool.categoryName.toLowerCase(),
     ],
     alternates: {
-      canonical: `https://omnitools.app/tools/${tool.slug}`,
+      canonical: `${SITE_URL}/tools/${tool.slug}`,
     },
     openGraph: {
       title,
       description,
-      url: `https://omnitools.app/tools/${tool.slug}`,
-      siteName: 'OmniTools',
+      url: `${SITE_URL}/tools/${tool.slug}`,
+      siteName: SITE_NAME,
       type: 'website',
       locale: 'en_US',
     },
@@ -87,7 +88,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
       {
         '@type': 'WebApplication',
         name: tool.title,
-        url: `https://omnitools.app/tools/${tool.slug}`,
+        url: `${SITE_URL}/tools/${tool.slug}`,
         description: tool.description,
         applicationCategory: 'UtilityApplication',
         operatingSystem: 'All',
@@ -106,19 +107,19 @@ export default async function ToolPage({ params }: ToolPageProps) {
             '@type': 'ListItem',
             position: 1,
             name: 'Home',
-            item: 'https://omnitools.app',
+            item: SITE_URL,
           },
           {
             '@type': 'ListItem',
             position: 2,
             name: tool.categoryName,
-            item: `https://omnitools.app/category/${tool.category}`,
+            item: `${SITE_URL}/category/${tool.category}`,
           },
           {
             '@type': 'ListItem',
             position: 3,
             name: tool.title,
-            item: `https://omnitools.app/tools/${tool.slug}`,
+            item: `${SITE_URL}/tools/${tool.slug}`,
           },
         ],
       },
@@ -231,7 +232,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
             Unlike traditional cloud tools that require uploading your private files, documents, or data payloads to third-party web servers, our <strong>{tool.title}</strong> is executed entirely inside your local device memory using Web APIs, HTML5 Canvas, and WebAssembly. This architecture guarantees total confidentiality for sensitive company data, personal photos, and business documents. Furthermore, because zero network round-trips are required for processing, calculations and transformations happen instantaneously with virtually zero latency.
           </p>
           <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-            Whether you are on a mobile device, tablet, laptop, or desktop workstation, OmniTools delivers unthrottled performance with no rate limits, no daily file caps, and no registration hurdles.
+            Whether you are on a mobile device, tablet, laptop, or desktop workstation, SnapTools delivers unthrottled performance with no rate limits, no daily file caps, and no registration hurdles.
           </p>
         </div>
 

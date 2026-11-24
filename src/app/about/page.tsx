@@ -3,11 +3,15 @@ import { Metadata } from 'next';
 import { Shield, Zap, Lock, Heart, Coffee, UserCheck, Sparkles, Mail, Users } from 'lucide-react';
 import Link from 'next/link';
 import Logo from '@/components/brand/Logo';
+import { SITE_URL } from '@/lib/siteConfig';
 
 export const metadata: Metadata = {
   title: 'About SnapTools - 100% Client-Side Web Utilities',
   description:
     'The story behind SnapTools. Built to provide 1,005 free, lightning-fast, and completely private browser tools with zero tracking.',
+  alternates: {
+    canonical: `${SITE_URL}/about`,
+  },
 };
 
 export default function AboutPage() {
