@@ -22,14 +22,34 @@ export default function AdSlot({
   className = '',
   label = 'Sponsored Advertisement',
 }: AdSlotProps) {
-  // Mid/bottom slots render Adsterra Native Banner (4:1 grid); top/leaderboard slots render Banner 728x90
   const isNativeSlot = slotId.includes('mid') || slotId.includes('bot');
 
+  const bannerShellRef = useRef<HTMLDivElement | null>(null);
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const nativeContainerRef = useRef<HTMLDivElement | null>(null);
   const [showFallback, setShowFallback] = useState(false);
+  const [bannerScale, setBannerScale] = useState(1);
 
-  // Banner 728x90 Injection (executes cleanly on every page & route change)
+  // Measure container width so 728x90 scales cleanly on mobile/narrow viewports with zero clipping
+  useEffect(() => {
+    if (isNativeSlot) return;
+    const shell = bannerShellRef.current;
+    if (!shell) return;
+
+    const updateScale = () => {
+      const avail = shell.clientWidth;
+      if (avail > 0) {
+        setBannerScale(Math.min(1, avail / 728));
+      }
+    };
+
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(shell);
+    return () => observer.disconnect();
+  }, [isNativeSlot]);
+
+  // Banner 728x90 Injection
   useEffect(() => {
     if (isNativeSlot) return;
     const container = bannerRef.current;
@@ -53,7 +73,6 @@ export default function AdSlot({
     script.onerror = () => setShowFallback(true);
     container.appendChild(script);
 
-    // Fallback to Smartlink card if ad script is blocked or has zero fill after timeout
     const fillTimer = window.setTimeout(() => {
       const hasIframe = container.querySelector('iframe');
       if (!hasIframe) {
@@ -67,7 +86,7 @@ export default function AdSlot({
     };
   }, [isNativeSlot, slotId]);
 
-  // Native Banner Injection (loaded once globally; Adsterra's pushState observer handles SPA updates)
+  // Native Banner Injection
   useEffect(() => {
     if (!isNativeSlot) return;
     const container = nativeContainerRef.current;
@@ -88,7 +107,6 @@ export default function AdSlot({
       document.body.appendChild(script);
     }
 
-    // Fallback to Smartlink card if AdBlocker prevents native fill
     const fillTimer = window.setTimeout(() => {
       if (container.children.length === 0) {
         setShowFallback(true);
@@ -135,10 +153,20 @@ export default function AdSlot({
             <div id={ADSTERRA_NATIVE_ID} ref={nativeContainerRef} className="w-full" />
           </div>
         ) : (
-          <div className="w-full flex justify-start md:justify-center overflow-x-auto no-scrollbar py-1">
+          <div
+            ref={bannerShellRef}
+            className="w-full max-w-[728px] overflow-hidden flex justify-center mx-auto"
+            style={{ height: `${Math.ceil(90 * bannerScale)}px` }}
+          >
             <div
               ref={bannerRef}
-              className="w-[728px] min-w-[728px] h-[90px] min-h-[90px] rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white/60 dark:bg-neutral-900/60 flex items-center justify-center overflow-hidden shrink-0"
+              style={{
+                width: '728px',
+                height: '90px',
+                transform: `scale(${bannerScale})`,
+                transformOrigin: 'top center',
+              }}
+              className="rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white/60 dark:bg-neutral-900/60 flex items-center justify-center overflow-hidden shrink-0"
             />
           </div>
         )

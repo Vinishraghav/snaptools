@@ -214,25 +214,30 @@ export default function HomeClient() {
 
       {/* Category Pills & Main Directory */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-              <Layers className="w-5 h-5 text-indigo-600" /> Explore All 1,005 Tools
-            </h2>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Showing {filteredTools.length} {filteredTools.length === 1 ? 'tool' : 'tools'}
-              {selectedCategory !== 'all' && ` in ${CATEGORIES.find((c) => c.slug === selectedCategory)?.name}`}
-            </p>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+                <Layers className="w-5 h-5 text-indigo-600 shrink-0" /> Explore All 1,005 Tools
+              </h2>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Showing {filteredTools.length} {filteredTools.length === 1 ? 'tool' : 'tools'}
+                {selectedCategory !== 'all' && ` in ${CATEGORIES.find((c) => c.slug === selectedCategory)?.name}`}
+              </p>
+            </div>
+            <span className="text-[11px] text-neutral-400 font-medium hidden sm:inline shrink-0">
+              Scroll horizontally &rarr;
+            </span>
           </div>
 
-          {/* Category Filter Pills (horizontal scroll) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none max-w-full">
+          {/* Category Filter Pills (clean full-width horizontal scroll) */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 w-full">
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition ${
                 selectedCategory === 'all'
                   ? 'bg-blue-600 text-white shadow-xs'
-                  : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100'
+                  : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
               }`}
             >
               All Categories (1,005)
@@ -241,10 +246,10 @@ export default function HomeClient() {
               <button
                 key={c.slug}
                 onClick={() => setSelectedCategory(c.slug)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition ${
                   selectedCategory === c.slug
                     ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100'
+                    : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                 }`}
               >
                 {c.name} ({c.count})

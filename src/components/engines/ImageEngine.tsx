@@ -319,7 +319,13 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
         <div className="flex items-center gap-4">
           <a
             href={processedUrl}
-            download={`processed-${fileName}`}
+            download={`processed-${fileName.replace(/\.[^.]+$/, '')}.${
+              tool.slug.includes('jpg') || tool.slug.includes('jpeg')
+                ? 'jpg'
+                : tool.slug.includes('webp')
+                  ? 'webp'
+                  : 'png'
+            }`}
             className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md shadow-blue-500/20 flex items-center gap-2 transition"
           >
             <Download className="w-4 h-4" /> Download Processed Image

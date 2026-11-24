@@ -101,13 +101,6 @@ export default function RootLayout({
         <main className="flex-1 w-full">{children}</main>
         <Footer />
         <CookieConsent />
-        {/* Adsterra Social Bar Ad Script */}
-        <Script
-          id="adsterra-social-bar"
-          data-cfasync="false"
-          src="https://bauval.org/14/d25d3e7f69b44b9fbe615d122d2792e1"
-          strategy="afterInteractive"
-        />
       </body>
     </html>
   );
