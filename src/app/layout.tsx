@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://snaptools.app'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://snaptools-app.vercel.app'),
   title: {
     default: 'SnapTools - 1,005 Free Handcrafted Client-Side Micro-Tools',
     template: '%s | SnapTools',
@@ -35,11 +35,11 @@ export const metadata: Metadata = {
     'unit converter',
     'web utilities',
   ],
-  authors: [{ name: 'SnapTools Team', url: 'https://snaptools.app' }],
+  authors: [{ name: 'SnapTools Team', url: 'https://snaptools-app.vercel.app' }],
   openGraph: {
     title: 'SnapTools - 1,005 Free Handcrafted Micro-Tools',
     description: 'The internet’s friendly pocketknife. Fast, private, and 100% free forever.',
-    url: 'https://snaptools.app',
+    url: 'https://snaptools-app.vercel.app',
     siteName: 'SnapTools',
     locale: 'en_US',
     type: 'website',
