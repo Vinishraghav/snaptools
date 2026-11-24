@@ -71,12 +71,10 @@ export default function RootLayout({
     >
       <head>
         {/* Google Search Console Ownership Verification */}
-        {process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && (
-          <meta
-            name="google-site-verification"
-            content={process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
-          />
-        )}
+        <meta
+          name="google-site-verification"
+          content="google562716ed7142a0a3"
+        />
         {/* Google AdSense Site Verification & Script */}
         <meta
           name="google-adsense-account"
