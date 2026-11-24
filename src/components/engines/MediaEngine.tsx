@@ -5,16 +5,22 @@ import { ToolDef } from '@/data/toolsRegistry';
 import { Volume2, Mic, Play, Pause, Download, Monitor, Radio, Upload, Film, Camera } from 'lucide-react';
 
 export default function MediaEngine({ tool }: { tool: ToolDef }) {
+  const spec = (tool.spec ?? {}) as Record<string, unknown>;
   const slug = tool.slug;
+  const specHz = typeof spec.hz === 'number' ? spec.hz : 440;
+  const specWave = (typeof spec.wave === 'string' ? spec.wave : 'sine') as OscillatorType;
+  const specBpm = typeof spec.bpm === 'number' ? spec.bpm : 120;
+  const specColorIdx = typeof spec.colorIndex === 'number' ? spec.colorIndex : 0;
+
   const [isPlaying, setIsPlaying] = useState(false);
-  const [frequency, setFrequency] = useState(440);
-  const [waveType, setWaveType] = useState<OscillatorType>('sine');
-  const [bpm, setBpm] = useState(120);
+  const [frequency, setFrequency] = useState(specHz);
+  const [waveType, setWaveType] = useState<OscillatorType>(specWave);
+  const [bpm, setBpm] = useState(specBpm);
   const [tapTimes, setTapTimes] = useState<number[]>([]);
   const [refreshRate, setRefreshRate] = useState<number | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
-  const [testColorIndex, setTestColorIndex] = useState(0);
+  const [testColorIndex, setTestColorIndex] = useState(specColorIdx % 5);
 
   // Subtitle converter state
   const [subtitleText, setSubtitleText] = useState(
@@ -35,6 +41,23 @@ export default function MediaEngine({ tool }: { tool: ToolDef }) {
   const oscRef = useRef<OscillatorNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    if (oscRef.current) {
+      try {
+        oscRef.current.stop();
+        oscRef.current.disconnect();
+      } catch {
+        // already stopped
+      }
+      oscRef.current = null;
+    }
+    setIsPlaying(false);
+    setFrequency(typeof spec.hz === 'number' ? spec.hz : 440);
+    setWaveType((typeof spec.wave === 'string' ? spec.wave : 'sine') as OscillatorType);
+    setBpm(typeof spec.bpm === 'number' ? spec.bpm : 120);
+    setTestColorIndex((typeof spec.colorIndex === 'number' ? spec.colorIndex : 0) % 5);
+  }, [tool.slug, spec.hz, spec.wave, spec.bpm, spec.colorIndex]);
 
   useEffect(() => {
     return () => {
@@ -181,11 +204,11 @@ export default function MediaEngine({ tool }: { tool: ToolDef }) {
     ? `WEBVTT\n\n${subtitleText.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')}`
     : subtitleText.replace(/^WEBVTT\s*/i, '').replace(/(\d{2}:\d{2}:\d{2})\.(\d{3})/g, '$1,$2');
 
-  const isTone = slug.includes('tone') || slug.includes('frequency') || slug.includes('binaural') || slug.includes('noise');
+  const isTone = typeof spec.hz === 'number' || slug.includes('tone') || slug.includes('frequency') || slug.includes('binaural') || slug.includes('noise') || slug.includes('hz-');
   const isRefresh = slug.includes('refresh-rate');
-  const isDeadPixel = slug.includes('dead-pixel');
+  const isDeadPixel = typeof spec.colorIndex === 'number' || slug.includes('dead-pixel');
   const isSpeaker = slug.includes('speaker') || slug.includes('stereo');
-  const isMetronome = slug.includes('metronome') || slug.includes('bpm');
+  const isMetronome = typeof spec.bpm === 'number' || slug.includes('metronome') || slug.includes('bpm');
   const isSubtitle = slug.includes('srt') || slug.includes('vtt') || slug.includes('subtitle');
   const isVoiceMic = slug.includes('voice-recorder') || slug.includes('mic') || slug.includes('dictation');
 

@@ -29,12 +29,6 @@ function makeNanoId(len = 21): string {
   return Array.from(bytes, (b) => URL_ALPHABET[b % URL_ALPHABET.length]).join('');
 }
 
-function makeApiKey(): string {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  return 'sk_live_' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 function makeMacAddress(): string {
   const bytes = new Uint8Array(6);
   crypto.getRandomValues(bytes);
@@ -48,29 +42,66 @@ function makeTotpFallback(): string {
   return String(val).padStart(6, '0');
 }
 
+function getQrPresetPayload(qrPreset: string | undefined, slug: string): string {
+  const key = (qrPreset || slug).toLowerCase();
+  if (key.includes('wi-fi') || key.includes('wifi')) return 'WIFI:T:WPA;S:SnapToolsGuest;P:MySecurePass123;;';
+  if (key.includes('whatsapp')) return 'https://wa.me/15551234567?text=Hello';
+  if (key.includes('upi')) return 'upi://pay?pa=merchant@upi&pn=MerchantName&am=100&cu=INR';
+  if (key.includes('vcard')) return 'BEGIN:VCARD\nVERSION:3.0\nN:Doe;Jane;;;\nFN:Jane Doe\nTEL:+15551234567\nEMAIL:jane@example.com\nEND:VCARD';
+  if (key.includes('email') || key.includes('mailto')) return 'mailto:hello@example.com?subject=Quick%20Question&body=Hi';
+  if (key.includes('sms')) return 'smsto:+15551234567:Hello there!';
+  if (key.includes('geo') || key.includes('location')) return 'geo:37.7749,-122.4194';
+  if (key.includes('event') || key.includes('ical')) return 'BEGIN:VEVENT\nSUMMARY:Team Sync\nDTSTART:20261201T090000Z\nDTEND:20261201T100000Z\nEND:VEVENT';
+  if (key.includes('zoom')) return 'https://zoom.us/j/1234567890';
+  if (key.includes('youtube')) return 'https://www.youtube.com/@snaptools';
+  if (key.includes('instagram')) return 'https://www.instagram.com/snaptools';
+  if (key.includes('linkedin')) return 'https://www.linkedin.com/company/snaptools';
+  if (key.includes('google-review')) return 'https://g.page/r/example/review';
+  return 'https://snaptools-app.vercel.app';
+}
+
 export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
-  const [inputText, setInputText] = useState('https://snaptools-app.vercel.app');
+  const spec = (tool.spec ?? {}) as Record<string, unknown>;
+  const specLen = typeof spec.length === 'number' ? spec.length : 16;
+  const specKind = typeof spec.kind === 'string' ? spec.kind : '';
+  const specMinutes = typeof spec.minutes === 'number' ? spec.minutes : 25;
+  const diceSides = typeof spec.sides === 'number' && spec.sides >= 2 ? spec.sides : 6;
+  const specQrPreset = typeof spec.qrPreset === 'string' ? spec.qrPreset : undefined;
+  const specAlgo = typeof spec.algo === 'string' ? spec.algo.toUpperCase() : undefined;
+
+  const [inputText, setInputText] = useState(() => getQrPresetPayload(specQrPreset, tool.slug));
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [barcodeValue, setBarcodeValue] = useState<string>('123456789012');
-  const [passwordLength, setPasswordLength] = useState<number>(16);
-  const [includeSymbols, setIncludeSymbols] = useState<boolean>(true);
+  const [passwordLength, setPasswordLength] = useState<number>(specLen);
+  const [includeSymbols, setIncludeSymbols] = useState<boolean>(specKind !== 'alphanumeric-password');
   const [includeNumbers, setIncludeNumbers] = useState<boolean>(true);
   const [generatedToken, setGeneratedToken] = useState<string>('');
   const [hashResult, setHashResult] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
 
   // Timer states
-  const [timerSeconds, setTimerSeconds] = useState<number>(25 * 60);
+  const [timerSeconds, setTimerSeconds] = useState<number>(specMinutes * 60);
   const [timerRunning, setTimerRunning] = useState<boolean>(false);
 
   // Random outcome state
-  const [diceRoll, setDiceRoll] = useState<number>(6);
+  const [diceRoll, setDiceRoll] = useState<number>(diceSides);
   const [coinSide, setCoinSide] = useState<'Heads' | 'Tails'>('Heads');
+
+  useEffect(() => {
+    setPasswordLength(typeof spec.length === 'number' ? spec.length : 16);
+    setIncludeSymbols(spec.kind !== 'alphanumeric-password');
+    setIncludeNumbers(true);
+    setTimerRunning(false);
+    setTimerSeconds((typeof spec.minutes === 'number' ? spec.minutes : 25) * 60);
+    setDiceRoll(typeof spec.sides === 'number' && spec.sides >= 2 ? spec.sides : 6);
+    setInputText(getQrPresetPayload(typeof spec.qrPreset === 'string' ? spec.qrPreset : undefined, tool.slug));
+  }, [tool.slug, spec.length, spec.kind, spec.minutes, spec.sides, spec.qrPreset]);
 
   const barcodeSvgRef = useRef<SVGSVGElement>(null);
   const slug = tool.slug;
 
   const isTokenGenerator =
+    Boolean(specKind) ||
     slug.includes('password') ||
     slug.includes('passphrase') ||
     slug.includes('pin') ||
@@ -83,6 +114,7 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
     slug.includes('totp');
 
   const isSecurityOrNetConfig =
+    Boolean(specAlgo) ||
     slug.includes('hash') ||
     slug.includes('sha') ||
     slug.includes('md5') ||
@@ -106,12 +138,17 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
       setGeneratedToken(makeUlid());
       return;
     }
-    if (slug.includes('nanoid')) {
+    if (specKind === 'nanoid-id' || slug.includes('nanoid')) {
       setGeneratedToken(makeNanoId(passwordLength));
       return;
     }
-    if (slug.includes('api-key') || slug.includes('token') || slug.includes('secret')) {
-      setGeneratedToken(makeApiKey());
+    if (specKind === 'api-secret-token' || slug.includes('api-key') || slug.includes('token') || slug.includes('secret')) {
+      const byteLen = Math.max(8, Math.ceil(passwordLength / 2));
+      const bytes = new Uint8Array(byteLen);
+      crypto.getRandomValues(bytes);
+      setGeneratedToken(
+        'sk_live_' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('').slice(0, passwordLength)
+      );
       return;
     }
     if (slug.includes('mac-address')) {
@@ -122,8 +159,10 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
       setGeneratedToken(makeTotpFallback());
       return;
     }
-    if (slug.includes('pin')) {
-      const len = Math.min(8, Math.max(4, passwordLength > 10 ? 6 : passwordLength));
+    if (specKind === 'pin-code' || slug.includes('pin')) {
+      const len = typeof spec.length === 'number'
+        ? Math.min(16, Math.max(4, passwordLength))
+        : Math.min(8, Math.max(4, passwordLength > 10 ? 6 : passwordLength));
       const arr = new Uint32Array(len);
       crypto.getRandomValues(arr);
       setGeneratedToken(Array.from(arr, (n) => String(n % 10)).join(''));
@@ -169,10 +208,10 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
     if (slug.includes('ipv4')) setInputText('192.168.1.1');
     else if (slug.includes('ipv6')) setInputText('2001:0db8:0000:0000:0000:ff00:0042:8329');
     else if (slug.includes('basic-auth')) setInputText('admin:secret123');
-    else if (slug.includes('hash') || slug.includes('sha') || slug.includes('md5') || slug.includes('hmac')) {
+    else if (Boolean(specAlgo) || slug.includes('hash') || slug.includes('sha') || slug.includes('md5') || slug.includes('hmac')) {
       setInputText('Hello SnapTools');
     }
-  }, [slug]);
+  }, [slug, specAlgo]);
 
   // Security / Network computation
   useEffect(() => {
@@ -217,19 +256,20 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
       return;
     }
 
-    const algo = slug.includes('sha-512')
-      ? 'SHA-512'
-      : slug.includes('sha-1')
-        ? 'SHA-1'
-        : slug.includes('sha-3')
-          ? 'SHA-384'
-          : 'SHA-256';
+    const algo = specAlgo
+      || (slug.includes('sha-512')
+        ? 'SHA-512'
+        : slug.includes('sha-1')
+          ? 'SHA-1'
+          : slug.includes('sha-3')
+            ? 'SHA-384'
+            : 'SHA-256');
     const data = new TextEncoder().encode(inputText);
     crypto.subtle.digest(algo, data).then((buf) => {
       const hex = Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
       setHashResult(`${algo}:\n${hex}`);
     });
-  }, [inputText, slug, isSecurityOrNetConfig]);
+  }, [inputText, slug, isSecurityOrNetConfig, specAlgo]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -280,14 +320,14 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
           </div>
 
           <div className="space-y-3">
-            {(slug.includes('password') || slug.includes('nanoid')) && (
+            {(Boolean(specKind) || slug.includes('password') || slug.includes('nanoid') || slug.includes('pin')) && !slug.includes('uuid') && !slug.includes('ulid') && !slug.includes('mac-address') && (
               <div>
                 <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
                   Length: {passwordLength} characters
                 </label>
                 <input
                   type="range"
-                  min={6}
+                  min={4}
                   max={64}
                   value={passwordLength}
                   onChange={(e) => setPasswordLength(Number(e.target.value))}
@@ -347,7 +387,7 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
             </pre>
           </div>
         </div>
-      ) : slug.includes('timer') || slug.includes('pomodoro') ? (
+      ) : (typeof spec.minutes === 'number' || slug.includes('timer') || slug.includes('pomodoro')) ? (
         <div className="p-8 rounded-2xl bg-neutral-900 text-white flex flex-col items-center justify-center space-y-4 text-center">
           <Clock className="w-8 h-8 text-blue-400" />
           <div className="text-6xl font-mono font-bold">
@@ -361,26 +401,26 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
             <button
               onClick={() => {
                 setTimerRunning(false);
-                setTimerSeconds(25 * 60);
+                setTimerSeconds(specMinutes * 60);
               }}
               className="px-6 py-2 rounded-xl bg-neutral-800 text-neutral-300 text-xs font-semibold"
             >
-              Reset
+              Reset ({specMinutes}m)
             </button>
           </div>
         </div>
-      ) : slug.includes('dice') || slug.includes('coin') ? (
+      ) : (typeof spec.sides === 'number' || slug.includes('dice') || slug.includes('coin')) ? (
         <div className="p-8 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 flex flex-col items-center justify-center space-y-4 text-center">
-          {slug.includes('dice') ? (
+          {(typeof spec.sides === 'number' || slug.includes('dice')) ? (
             <>
               <div className="w-20 h-20 rounded-2xl bg-blue-600 text-white text-4xl font-bold flex items-center justify-center shadow-lg">
                 {diceRoll}
               </div>
               <button
-                onClick={() => setDiceRoll(Math.floor(Math.random() * 6) + 1)}
+                onClick={() => setDiceRoll(Math.floor(Math.random() * diceSides) + 1)}
                 className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-semibold flex items-center gap-2"
               >
-                <Dice5 className="w-4 h-4" /> Roll Dice
+                <Dice5 className="w-4 h-4" /> Roll d{diceSides}
               </button>
             </>
           ) : (

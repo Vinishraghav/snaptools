@@ -49,7 +49,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }));
 
-  // 3. Individual Tool routes (1,005 tools)
+  // 3. Individual Tool routes (all tools in TOOLS_REGISTRY)
   const toolRoutes: MetadataRoute.Sitemap = TOOLS_REGISTRY.map((tool) => ({
     url: `${baseUrl}/tools/${tool.slug}`,
     lastModified: now,

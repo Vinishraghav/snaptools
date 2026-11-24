@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ToolDef } from '@/data/toolsRegistry';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, ArrowLeftRight } from 'lucide-react';
 
 interface UnitGroup {
   name: string;
@@ -117,13 +117,18 @@ const UNIT_GROUPS: Record<string, UnitGroup> = {
     },
   },
   area: {
-    name: 'Area',
+    name: 'Area & Land',
     baseUnit: 'sq_meter',
     units: {
       sq_millimeter: 0.000001,
       sq_centimeter: 0.0001,
       sq_feet: 0.092903,
+      sq_yard_gaj: 0.836127,
       sq_meter: 1,
+      cent: 40.4686,
+      ground: 222.967,
+      guntha: 101.1714,
+      bigha: 2529.285,
       acre: 4046.86,
       hectare: 10000,
       sq_km: 1000000,
@@ -206,7 +211,7 @@ const UNIT_GROUPS: Record<string, UnitGroup> = {
   },
   frequency: {
     name: 'Frequency',
-    baseUnit: 'hertz',
+    baseUnit: 'hertz_hz',
     units: {
       hertz_hz: 1,
       kilohertz_khz: 1000,
@@ -258,7 +263,13 @@ const UNIT_GROUPS: Record<string, UnitGroup> = {
   },
 };
 
-function detectUnitGroup(slug: string): string {
+function detectUnitGroup(tool: ToolDef): string {
+  if (tool.spec?.mode === 'unit-pair' && typeof tool.spec.group === 'string' && UNIT_GROUPS[tool.spec.group]) {
+    return tool.spec.group;
+  }
+  if (tool.spec?.mode === 'base-pair') return 'number-base';
+
+  const slug = tool.slug;
   if (slug.includes('number-base') || slug.includes('bin-oct-dec-hex')) return 'number-base';
   if (slug.includes('transfer-rate') || slug.includes('bandwidth')) return 'transfer';
   if (slug.includes('binary-vs-decimal') || slug.includes('storage') || slug.includes('download-time')) return 'storage';
@@ -283,45 +294,75 @@ function detectUnitGroup(slug: string): string {
   return 'length';
 }
 
+function formatNum(n: number): string {
+  if (n === 0) return '0';
+  if (!isFinite(n)) return '0';
+  return Math.abs(n) < 0.0001 || Math.abs(n) > 1000000
+    ? n.toExponential(4)
+    : Number(n.toFixed(6)).toString();
+}
+
 export default function ConverterEngine({ tool }: { tool: ToolDef }) {
-  const detectedType = detectUnitGroup(tool.slug);
+  const detectedType = detectUnitGroup(tool);
   const isNumberBase = detectedType === 'number-base';
 
   const group = UNIT_GROUPS[detectedType] || UNIT_GROUPS.length;
   const unitKeys = Object.keys(group.units);
 
-  const [fromUnit, setFromUnit] = useState<string>(unitKeys[1] || unitKeys[0]);
+  const initialFrom =
+    typeof tool.spec?.from === 'string' && group.units[tool.spec.from]
+      ? tool.spec.from
+      : unitKeys[1] || unitKeys[0];
+  const initialTo =
+    typeof tool.spec?.to === 'string' && group.units[tool.spec.to]
+      ? tool.spec.to
+      : unitKeys[0];
+
+  const [fromUnit, setFromUnit] = useState<string>(initialFrom);
+  const [targetUnit, setTargetUnit] = useState<string>(initialTo);
   const [inputValue, setInputValue] = useState<number>(100);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Number base state
-  const [baseInput, setBaseInput] = useState<string>('255');
-  const [sourceBase, setSourceBase] = useState<number>(10);
+  const initialBase = typeof tool.spec?.fromBase === 'number' ? tool.spec.fromBase : 10;
+  const initialToBase = typeof tool.spec?.toBase === 'number' ? tool.spec.toBase : 2;
+  const [baseInput, setBaseInput] = useState<string>(
+    initialBase === 16 ? 'FF' : initialBase === 2 ? '11111111' : initialBase === 8 ? '377' : '255'
+  );
+  const [sourceBase, setSourceBase] = useState<number>(initialBase);
 
-  // Reset fromUnit whenever tool changes
   useEffect(() => {
-    const grp = UNIT_GROUPS[detectUnitGroup(tool.slug)] || UNIT_GROUPS.length;
+    const type = detectUnitGroup(tool);
+    if (type === 'number-base') {
+      const fb = typeof tool.spec?.fromBase === 'number' ? tool.spec.fromBase : 10;
+      setSourceBase(fb);
+      setBaseInput(fb === 16 ? 'FF' : fb === 2 ? '11111111' : fb === 8 ? '377' : '255');
+      return;
+    }
+    const grp = UNIT_GROUPS[type] || UNIT_GROUPS.length;
     const keys = Object.keys(grp.units);
-    setFromUnit(keys[1] || keys[0]);
-  }, [tool.slug]);
+    setFromUnit(typeof tool.spec?.from === 'string' && grp.units[tool.spec.from] ? tool.spec.from : keys[1] || keys[0]);
+    setTargetUnit(typeof tool.spec?.to === 'string' && grp.units[tool.spec.to] ? tool.spec.to : keys[0]);
+  }, [tool]);
 
   const toBaseValue = (val: number, unit: string): number => {
     const factor = group.units[unit];
-    if (typeof factor === 'function') {
-      return factor(val, true);
-    }
+    if (typeof factor === 'function') return factor(val, true);
     return val * (factor || 1);
   };
 
   const fromBaseValue = (baseVal: number, unit: string): number => {
     const factor = group.units[unit];
-    if (typeof factor === 'function') {
-      return factor(baseVal, false);
-    }
+    if (typeof factor === 'function') return factor(baseVal, false);
     return baseVal / (factor || 1);
   };
 
   const baseVal = toBaseValue(inputValue, fromUnit);
+  const directConverted = formatNum(fromBaseValue(baseVal, targetUnit));
+
+  const handleSwapUnits = () => {
+    setFromUnit(targetUnit);
+    setTargetUnit(fromUnit);
+  };
 
   const handleCopy = (valStr: string, key: string) => {
     navigator.clipboard.writeText(valStr);
@@ -375,11 +416,16 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {bases.map((b) => {
             const val = isValid ? parsedDec.toString(b.base).toUpperCase() : 'Invalid Input';
+            const isHighlighted = b.base === initialToBase;
             return (
               <div
                 key={b.base}
                 onClick={() => isValid && handleCopy(val, String(b.base))}
-                className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/60 cursor-pointer flex items-center justify-between hover:border-blue-500 transition"
+                className={`p-4 rounded-xl border cursor-pointer flex items-center justify-between transition ${
+                  isHighlighted
+                    ? 'border-blue-500 bg-blue-50/40 dark:bg-blue-950/40'
+                    : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/60 hover:border-blue-500'
+                }`}
               >
                 <div className="min-w-0 pr-2">
                   <div className="text-[11px] font-medium text-neutral-500">{b.label}</div>
@@ -402,8 +448,9 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
 
   return (
     <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
-      <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-        <div>
+      {/* Direct From -> To Converter Controls */}
+      <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        <div className="md:col-span-4">
           <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
             Enter {group.name} Value
           </label>
@@ -414,9 +461,9 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
             className="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-lg font-mono font-bold focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div>
+        <div className="md:col-span-3">
           <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-            Source Unit
+            From Unit
           </label>
           <select
             value={fromUnit}
@@ -430,22 +477,72 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
             ))}
           </select>
         </div>
+        <div className="md:col-span-1 flex justify-center pb-1">
+          <button
+            type="button"
+            onClick={handleSwapUnits}
+            title="Swap Units"
+            className="p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-blue-500 transition"
+          >
+            <ArrowLeftRight className="w-4 h-4 text-blue-600" />
+          </button>
+        </div>
+        <div className="md:col-span-4">
+          <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+            To Unit
+          </label>
+          <select
+            value={targetUnit}
+            onChange={(e) => setTargetUnit(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm font-semibold capitalize focus:outline-hidden"
+          >
+            {unitKeys.map((u) => (
+              <option key={u} value={u}>
+                {u.replace(/_/g, ' ')}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
+      {/* Primary Direct Result Spotlight */}
+      <div
+        onClick={() => handleCopy(directConverted, 'direct-spotlight')}
+        className="p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-violet-500/10 border border-blue-500/30 cursor-pointer flex items-center justify-between gap-4 hover:shadow-md transition"
+      >
+        <div>
+          <div className="text-xs font-semibold text-blue-700 dark:text-blue-300 capitalize">
+            {inputValue} {fromUnit.replace(/_/g, ' ')} =
+          </div>
+          <div className="text-2xl sm:text-3xl font-mono font-extrabold text-blue-600 dark:text-blue-400 mt-1">
+            {directConverted}{' '}
+            <span className="text-sm font-semibold capitalize text-neutral-600 dark:text-neutral-400">
+              {targetUnit.replace(/_/g, ' ')}
+            </span>
+          </div>
+        </div>
+        <div className="text-xs font-semibold text-blue-600 flex items-center gap-1.5 shrink-0">
+          {copiedKey === 'direct-spotlight' ? (
+            <>
+              <Check className="w-4 h-4 text-emerald-500" /> Copied
+            </>
+          ) : (
+            <>
+              <Copy className="w-4 h-4" /> Copy Result
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Full Unit Matrix */}
       <div>
         <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">
-          {group.name} Conversion Matrix
+          Complete {group.name} Conversion Matrix
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {unitKeys.map((u) => {
-            const converted = fromBaseValue(baseVal, u);
-            const formatted =
-              converted === 0
-                ? '0'
-                : Math.abs(converted) < 0.0001 || Math.abs(converted) > 1000000
-                  ? converted.toExponential(4)
-                  : Number(converted.toFixed(6)).toString();
-
+            const formatted = formatNum(fromBaseValue(baseVal, u));
+            const isTarget = u === targetUnit;
             const isCurrent = u === fromUnit;
 
             return (
@@ -453,9 +550,11 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
                 key={u}
                 onClick={() => handleCopy(formatted, u)}
                 className={`p-4 rounded-xl border cursor-pointer transition flex items-center justify-between group ${
-                  isCurrent
-                    ? 'border-blue-500 bg-blue-50/40 dark:bg-blue-950/40'
-                    : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-950/40'
+                  isTarget
+                    ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/30'
+                    : isCurrent
+                      ? 'border-blue-500 bg-blue-50/40 dark:bg-blue-950/40'
+                      : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-950/40'
                 }`}
               >
                 <div className="min-w-0 pr-2">

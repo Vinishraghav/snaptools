@@ -53,13 +53,20 @@ function generateLuhnCard(prefix = '4532'): string {
 }
 
 export default function DataEngine({ tool }: { tool: ToolDef }) {
+  const spec = (tool.spec ?? {}) as Record<string, unknown>;
+  const specMockCount = typeof spec.mockCount === 'number' ? spec.mockCount : 10;
+
   const [csvInput, setCsvInput] = useState(
     'id,name,role,salary,department\n1,Alice,Engineer,95000,Engineering\n2,Bob,Designer,82000,Product\n3,Charlie,Product Manager,110000,Product\n4,David,Data Scientist,105000,AI'
   );
   const [outputData, setOutputData] = useState('');
   const [copied, setCopied] = useState(false);
-  const [mockCount, setMockCount] = useState(10);
+  const [mockCount, setMockCount] = useState(specMockCount);
   const [regenTick, setRegenTick] = useState(0);
+
+  useEffect(() => {
+    setMockCount(typeof spec.mockCount === 'number' ? spec.mockCount : 10);
+  }, [tool.slug, spec.mockCount]);
 
   const calculateStats = (numbers: number[]) => {
     if (numbers.length === 0) return null;
@@ -315,7 +322,7 @@ export default function DataEngine({ tool }: { tool: ToolDef }) {
 
   return (
     <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
-      {(tool.slug.includes('mock') || tool.slug.includes('random') || tool.slug.includes('credit-card')) && (
+      {(typeof spec.mockCount === 'number' || tool.slug.includes('mock') || tool.slug.includes('random') || tool.slug.includes('credit-card')) && (
         <div className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800">
           <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
             Count / Rows:

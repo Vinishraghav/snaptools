@@ -12,7 +12,7 @@ import {
   ChevronRight,
   TrendingUp,
 } from 'lucide-react';
-import { TOOLS_REGISTRY, ToolDef } from '@/data/toolsRegistry';
+import { TOOLS_REGISTRY, ToolDef, TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 import { CATEGORIES } from '@/data/categories';
 import AdSlot from '@/components/ads/AdSlot';
 
@@ -20,6 +20,11 @@ export default function HomeClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [recentTools, setRecentTools] = useState<ToolDef[]>([]);
+  const [visibleCount, setVisibleCount] = useState<number>(100);
+
+  useEffect(() => {
+    setVisibleCount(100);
+  }, [searchQuery, selectedCategory]);
 
   useEffect(() => {
     try {
@@ -74,7 +79,7 @@ export default function HomeClient() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 shadow-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>1,005 Free Client-Side Micro-Tools &bull; Zero Server Uploads &bull; 100% Private</span>
+            <span>{TOTAL_TOOLS_LABEL} Free Client-Side Micro-Tools &bull; Zero Server Uploads &bull; 100% Private</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-neutral-950 dark:text-white leading-[1.15]">
@@ -85,7 +90,7 @@ export default function HomeClient() {
           </h1>
 
           <p className="max-w-2xl mx-auto text-base sm:text-lg text-neutral-600 dark:text-neutral-400 leading-relaxed">
-            Tired of spammy websites that demand sign-ups or upload your private PDFs and photos to unknown servers? We handcrafted 1,005 client-side utilities that run right in your browser memory.
+            Tired of spammy websites that demand sign-ups or upload your private PDFs and photos to unknown servers? We handcrafted {TOTAL_TOOLS_LABEL} client-side utilities that run right in your browser memory.
           </p>
 
           {/* Instant Search Bar */}
@@ -96,7 +101,7 @@ export default function HomeClient() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search across all 1,005 tools (e.g., 'PDF Merge', 'EMI Calculator', 'QR Code')..."
+                placeholder={`Search across all ${TOTAL_TOOLS_LABEL} tools (e.g., 'PDF Merge', 'EMI Calculator', 'QR Code')...`}
                 className="w-full py-4 pl-3 pr-4 text-sm sm:text-base bg-transparent text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-hidden"
               />
               {searchQuery && (
@@ -218,10 +223,10 @@ export default function HomeClient() {
           <div className="flex items-end justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-                <Layers className="w-5 h-5 text-indigo-600 shrink-0" /> Explore All 1,005 Tools
+                <Layers className="w-5 h-5 text-indigo-600 shrink-0" /> Explore All {TOTAL_TOOLS_LABEL} Tools
               </h2>
               <p className="text-xs text-neutral-500 mt-0.5">
-                Showing {filteredTools.length} {filteredTools.length === 1 ? 'tool' : 'tools'}
+                Showing {filteredTools.length.toLocaleString()} {filteredTools.length === 1 ? 'tool' : 'tools'}
                 {selectedCategory !== 'all' && ` in ${CATEGORIES.find((c) => c.slug === selectedCategory)?.name}`}
               </p>
             </div>
@@ -240,7 +245,7 @@ export default function HomeClient() {
                   : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
               }`}
             >
-              All Categories (1,005)
+              All Categories ({TOTAL_TOOLS_LABEL})
             </button>
             {CATEGORIES.map((c) => (
               <button
@@ -260,7 +265,7 @@ export default function HomeClient() {
 
         {/* Tools Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-          {filteredTools.slice(0, 100).map((tool) => (
+          {filteredTools.slice(0, visibleCount).map((tool) => (
             <Link
               key={tool.slug}
               href={`/tools/${tool.slug}`}
@@ -288,11 +293,17 @@ export default function HomeClient() {
           ))}
         </div>
 
-        {filteredTools.length > 100 && (
-          <div className="text-center py-6">
-            <p className="text-xs text-neutral-500 mb-3">
-              Showing first 100 results of {filteredTools.length}. Use search or select a category to narrow down.
+        {filteredTools.length > visibleCount && (
+          <div className="text-center py-6 space-y-3">
+            <p className="text-xs text-neutral-500">
+              Showing {visibleCount.toLocaleString()} of {filteredTools.length.toLocaleString()} matching tools. Use search, categories, or load more below.
             </p>
+            <button
+              onClick={() => setVisibleCount((prev) => prev + 100)}
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            >
+              Show More (+100 tools)
+            </button>
           </div>
         )}
       </section>

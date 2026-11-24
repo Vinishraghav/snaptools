@@ -6,6 +6,7 @@ import Footer from '@/components/layout/Footer';
 import CookieConsent from '@/components/layout/CookieConsent';
 import Script from 'next/script';
 import { SITE_URL, SITE_NAME } from '@/lib/siteConfig';
+import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -20,11 +21,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'SnapTools - 1,005 Free Handcrafted Client-Side Micro-Tools',
+    default: `SnapTools - ${TOTAL_TOOLS_LABEL} Free Handcrafted Client-Side Micro-Tools`,
     template: '%s | SnapTools',
   },
   description:
-    'The internet’s friendly pocketknife. 1,005 handcrafted, 100% client-side micro-tools for PDF, image optimization, developer code, data, finance, health, and unit conversions. Zero file uploads, zero accounts.',
+    `The internet’s friendly pocketknife. ${TOTAL_TOOLS_LABEL} handcrafted, 100% client-side micro-tools for PDF, image optimization, developer code, data, finance, health, and unit conversions. Zero file uploads, zero accounts.`,
   keywords: [
     'snaptools',
     'free online tools',
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'SnapTools Team', url: SITE_URL }],
   openGraph: {
-    title: 'SnapTools - 1,005 Free Handcrafted Micro-Tools',
+    title: `SnapTools - ${TOTAL_TOOLS_LABEL} Free Handcrafted Micro-Tools`,
     description: 'The internet’s friendly pocketknife. Fast, private, and 100% free forever.',
     url: SITE_URL,
     siteName: SITE_NAME,
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'SnapTools - 1,005 Free Handcrafted Micro-Tools',
+    title: `SnapTools - ${TOTAL_TOOLS_LABEL} Free Handcrafted Micro-Tools`,
     description: '100% client-side privacy. Zero file uploads. Fast & reliable web utilities.',
   },
   icons: {

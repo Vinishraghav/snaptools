@@ -21,7 +21,23 @@ type PdfMode =
   | 'template-generator'
   | 'pdf-file';
 
-function detectPdfMode(slug: string): PdfMode {
+const PAPER_SIZES: Record<string, { label: string; dims: [number, number] }> = {
+  a0: { label: 'A0 Portrait', dims: [2383.94, 3370.39] },
+  a1: { label: 'A1 Portrait', dims: [1683.78, 2383.94] },
+  a2: { label: 'A2 Portrait', dims: [1190.55, 1683.78] },
+  a3: { label: 'A3 Portrait', dims: [841.89, 1190.55] },
+  a4: { label: 'A4 Portrait (Standard)', dims: [595.28, 841.89] },
+  a5: { label: 'A5 Portrait', dims: [419.53, 595.28] },
+  a6: { label: 'A6 Portrait', dims: [297.64, 419.53] },
+  b4: { label: 'B4 JIS', dims: [708.66, 1000.63] },
+  b5: { label: 'B5 JIS', dims: [498.9, 708.66] },
+  letter: { label: 'US Letter', dims: [612, 792] },
+  legal: { label: 'US Legal', dims: [612, 1008] },
+  tabloid: { label: 'Tabloid (11x17)', dims: [792, 1224] },
+  executive: { label: 'Executive', dims: [522, 756] },
+};
+
+function detectPdfMode(slug: string, spec?: Record<string, unknown>): PdfMode {
   if (
     slug.includes('images-to-pdf') ||
     slug.includes('image-to-pdf') ||
@@ -53,8 +69,11 @@ function detectPdfMode(slug: string): PdfMode {
     return 'text-generator';
   }
   if (
+    typeof spec?.gridSize === 'number' ||
     slug.includes('cornell-note') ||
     slug.includes('graph-paper') ||
+    slug.includes('lined-paper') ||
+    slug.includes('dot-grid') ||
     slug.includes('music-sheet') ||
     slug.includes('calligraphy')
   ) {
@@ -154,9 +173,20 @@ async function fileToPngBytesViaCanvas(file: File): Promise<Uint8Array> {
 }
 
 export default function PdfEngine({ tool }: { tool: ToolDef }) {
-  const mode = detectPdfMode(tool.slug);
+  const spec = (tool.spec ?? {}) as Record<string, unknown>;
+  const specTargetKb = typeof spec.targetKb === 'number' ? spec.targetKb : 200;
+  const specGridSize = typeof spec.gridSize === 'number' ? spec.gridSize : 18;
+  const specPaper = (
+    typeof spec.paperSize === 'string'
+      ? spec.paperSize
+      : typeof spec.resizePaper === 'string'
+        ? spec.resizePaper
+        : 'a4'
+  ).toLowerCase();
+
+  const mode = detectPdfMode(tool.slug, spec);
   const isMerge = tool.slug.includes('merge') || tool.slug.includes('join');
-  const isCompressor = tool.slug.includes('compress');
+  const isCompressor = typeof spec.targetKb === 'number' || tool.slug.includes('compress');
   const isSplitOrDelete =
     tool.slug.includes('split') ||
     tool.slug.includes('delete') ||
@@ -173,10 +203,10 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
   // Feature-specific controls
   const [watermarkText, setWatermarkText] = useState('CONFIDENTIAL');
   const [rotationAngle, setRotationAngle] = useState(90);
-  const [targetKb, setTargetKb] = useState<number>(200);
+  const [targetKb, setTargetKb] = useState<number>(specTargetKb);
   const [pageRange, setPageRange] = useState<string>('1-2');
   const [oddEvenMode, setOddEvenMode] = useState<'odd' | 'even'>('odd');
-  const [imagePageSize, setImagePageSize] = useState<'fit' | 'a4' | 'letter'>('a4');
+  const [imagePageSize, setImagePageSize] = useState<string>(PAPER_SIZES[specPaper] ? specPaper : 'a4');
   const [imageMargin, setImageMargin] = useState<number>(20);
   const [metaTitle, setMetaTitle] = useState('SnapTools Document');
   const [metaAuthor, setMetaAuthor] = useState('SnapTools User');
@@ -189,7 +219,7 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
   const [docBody, setDocBody] = useState(() =>
     getDefaultTextForSlug(tool.slug, tool.title)
   );
-  const [templateGridSize, setTemplateGridSize] = useState<number>(18);
+  const [templateGridSize, setTemplateGridSize] = useState<number>(specGridSize);
 
   useEffect(() => {
     setFiles([]);
@@ -198,7 +228,17 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
     setErrorMessage('');
     setDocTitle(tool.title);
     setDocBody(getDefaultTextForSlug(tool.slug, tool.title));
-  }, [tool.slug, tool.title]);
+    setTargetKb(typeof spec.targetKb === 'number' ? spec.targetKb : 200);
+    setTemplateGridSize(typeof spec.gridSize === 'number' ? spec.gridSize : 18);
+    const nextPaper = (
+      typeof spec.paperSize === 'string'
+        ? spec.paperSize
+        : typeof spec.resizePaper === 'string'
+          ? spec.resizePaper
+          : 'a4'
+    ).toLowerCase();
+    setImagePageSize(PAPER_SIZES[nextPaper] ? nextPaper : 'a4');
+  }, [tool.slug, tool.title, spec.targetKb, spec.gridSize, spec.paperSize, spec.resizePaper]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -239,15 +279,9 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
           }
 
           const { width: imgW, height: imgH } = embeddedImg.scale(1);
-          let pageW = imgW + imageMargin * 2;
-          let pageH = imgH + imageMargin * 2;
-          if (imagePageSize === 'a4') {
-            pageW = 595.28;
-            pageH = 841.89;
-          } else if (imagePageSize === 'letter') {
-            pageW = 612;
-            pageH = 792;
-          }
+          const preset = PAPER_SIZES[imagePageSize];
+          const pageW = preset ? preset.dims[0] : imgW + imageMargin * 2;
+          const pageH = preset ? preset.dims[1] : imgH + imageMargin * 2;
 
           const page = doc.addPage([pageW, pageH]);
           const availW = Math.max(10, pageW - imageMargin * 2);
@@ -349,9 +383,10 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
           ? docBody.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ')
           : docBody.replace(/^#+\s*/gm, '');
 
-        const lines = wrapLines(cleanBody, 78);
-        let page = doc.addPage([595.28, 841.89]);
-        let y = 785;
+        const [tW, tH] = PAPER_SIZES[imagePageSize]?.dims ?? [595.28, 841.89];
+        const lines = wrapLines(cleanBody, Math.max(36, Math.floor((tW - 100) / 6.2)));
+        let page = doc.addPage([tW, tH]);
+        let y = tH - 56;
 
         page.drawText(docTitle || tool.title, {
           x: 50,
@@ -364,8 +399,8 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
 
         for (const line of lines) {
           if (y < 55) {
-            page = doc.addPage([595.28, 841.89]);
-            y = 785;
+            page = doc.addPage([tW, tH]);
+            y = tH - 56;
           }
           if (line.trim()) {
             page.drawText(line, {
@@ -579,10 +614,12 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
           setDownloadUrl(URL.createObjectURL(blob));
           setDownloadName('reversed.pdf');
           setStatusMessage(`Reversed order of all ${total} pages!`);
-        } else if (tool.slug.includes('resize-to-a4') || tool.slug.includes('resize-to-letter')) {
-          const isA4 = tool.slug.includes('a4');
-          const targetW = isA4 ? 595.28 : 612;
-          const targetH = isA4 ? 841.89 : 792;
+        } else if (Boolean(spec.resizePaper) || tool.slug.includes('resize-to-')) {
+          const resizeKey =
+            (typeof spec.resizePaper === 'string' ? spec.resizePaper : '').toLowerCase() ||
+            (tool.slug.includes('letter') ? 'letter' : 'a4');
+          const paperEntry = PAPER_SIZES[resizeKey] ?? PAPER_SIZES.a4;
+          const [targetW, targetH] = paperEntry.dims;
           const resizedDoc = await PDFDocument.create();
           const embeddedPages = await resizedDoc.embedPages(doc.getPages());
           for (const ep of embeddedPages) {
@@ -598,8 +635,8 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
           const pdfBytes = await resizedDoc.save();
           const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
           setDownloadUrl(URL.createObjectURL(blob));
-          setDownloadName(isA4 ? 'resized-a4.pdf' : 'resized-letter.pdf');
-          setStatusMessage(`Resized all ${total} pages to ${isA4 ? 'A4' : 'US Letter'}!`);
+          setDownloadName(`resized-${resizeKey}.pdf`);
+          setStatusMessage(`Resized all ${total} pages to ${paperEntry.label}!`);
         } else if (tool.slug.includes('metadata-editor')) {
           doc.setTitle(metaTitle);
           doc.setAuthor(metaAuthor);
@@ -760,13 +797,14 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
               </label>
               <select
                 value={imagePageSize}
-                onChange={(e) =>
-                  setImagePageSize(e.target.value as 'fit' | 'a4' | 'letter')
-                }
+                onChange={(e) => setImagePageSize(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
               >
-                <option value="a4">A4 Portrait (Standard)</option>
-                <option value="letter">US Letter</option>
+                {Object.entries(PAPER_SIZES).map(([key, info]) => (
+                  <option key={key} value={key}>
+                    {info.label}
+                  </option>
+                ))}
                 <option value="fit">Fit to Image Dimensions</option>
               </select>
             </div>

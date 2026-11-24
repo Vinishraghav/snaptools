@@ -40,6 +40,12 @@ function toZalgo(text: string): string {
 }
 
 export default function TextEngine({ tool }: { tool: ToolDef }) {
+  const spec = (tool.spec ?? {}) as Record<string, unknown>;
+  const specLorem = typeof spec.loremCount === 'number' ? spec.loremCount : 3;
+  const specAffix = typeof spec.affix === 'string' ? spec.affix : '> ';
+  const specShift = typeof spec.shift === 'number' ? spec.shift : 3;
+  const specSuffixMode = typeof spec.suffixMode === 'boolean' ? spec.suffixMode : tool.slug.includes('suffix');
+
   const [inputText, setInputText] = useState(
     'The quick brown fox jumps over the lazy dog.\nFast, secure, and 100% client-side text processing.'
   );
@@ -50,10 +56,16 @@ export default function TextEngine({ tool }: { tool: ToolDef }) {
   const [copied, setCopied] = useState(false);
   const [findStr, setFindStr] = useState('');
   const [replaceStr, setReplaceStr] = useState('');
-  const [loremCount, setLoremCount] = useState(3);
-  const [affixStr, setAffixStr] = useState('> ');
-  const [shiftCount, setShiftCount] = useState(3);
+  const [loremCount, setLoremCount] = useState(specLorem);
+  const [affixStr, setAffixStr] = useState(specAffix);
+  const [shiftCount, setShiftCount] = useState(specShift);
   const [listening, setListening] = useState(false);
+
+  useEffect(() => {
+    setLoremCount(typeof spec.loremCount === 'number' ? spec.loremCount : 3);
+    setAffixStr(typeof spec.affix === 'string' ? spec.affix : '> ');
+    setShiftCount(typeof spec.shift === 'number' ? spec.shift : 3);
+  }, [tool.slug, spec.loremCount, spec.affix, spec.shift]);
 
   const charCount = inputText.length;
   const wordCount = inputText.trim() ? inputText.trim().split(/\s+/).length : 0;
@@ -94,9 +106,9 @@ export default function TextEngine({ tool }: { tool: ToolDef }) {
       res = inputText.split(/\r?\n/).sort(() => Math.random() - 0.5).join('\n');
     } else if (slug.includes('whitespace') || slug.includes('blank-line')) {
       res = inputText.split(/\r?\n/).map((l) => l.trim().replace(/\s+/g, ' ')).filter(Boolean).join('\n');
-    } else if (slug.includes('suffix')) {
+    } else if (specSuffixMode || slug.includes('suffix')) {
       res = inputText.split(/\r?\n/).map((l) => `${l}${affixStr}`).join('\n');
-    } else if (slug.includes('prefix')) {
+    } else if (typeof spec.affix === 'string' || slug.includes('prefix')) {
       res = inputText.split(/\r?\n/).map((l) => `${affixStr}${l}`).join('\n');
     } else if (slug.includes('line-number-stripper')) {
       res = inputText.split(/\r?\n/).map((l) => l.replace(/^\s*\d+[\.\)\-:\s]+/, '')).join('\n');
@@ -206,6 +218,8 @@ export default function TextEngine({ tool }: { tool: ToolDef }) {
     findStr,
     replaceStr,
     affixStr,
+    specSuffixMode,
+    spec.affix,
     shiftCount,
     loremCount,
     charCount,
@@ -271,7 +285,7 @@ export default function TextEngine({ tool }: { tool: ToolDef }) {
       </div>
 
       {/* Tool-specific controls */}
-      {tool.slug.includes('lorem-ipsum') && (
+      {(typeof spec.loremCount === 'number' || tool.slug.includes('lorem-ipsum')) && (
         <div>
           <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
             Paragraph Count: {loremCount}
@@ -279,7 +293,7 @@ export default function TextEngine({ tool }: { tool: ToolDef }) {
           <input
             type="range"
             min={1}
-            max={15}
+            max={20}
             value={loremCount}
             onChange={(e) => setLoremCount(Number(e.target.value))}
             className="w-full"
@@ -287,10 +301,10 @@ export default function TextEngine({ tool }: { tool: ToolDef }) {
         </div>
       )}
 
-      {(tool.slug.includes('prefix') || tool.slug.includes('suffix')) && (
+      {(typeof spec.affix === 'string' || tool.slug.includes('prefix') || tool.slug.includes('suffix')) && (
         <div>
           <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-            {tool.slug.includes('suffix') ? 'Line Suffix' : 'Line Prefix'}
+            {specSuffixMode || tool.slug.includes('suffix') ? 'Line Suffix' : 'Line Prefix'}
           </label>
           <input
             type="text"

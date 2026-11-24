@@ -15,7 +15,7 @@ import {
   Heart,
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
-import { TOOLS_REGISTRY, ToolDef } from '@/data/toolsRegistry';
+import { TOOLS_REGISTRY, ToolDef, TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 import { CATEGORIES } from '@/data/categories';
 
 export default function Header() {
@@ -98,7 +98,7 @@ export default function Header() {
             className="hidden md:flex items-center gap-3 w-72 lg:w-96 px-3.5 py-2 rounded-xl text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-100/80 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition"
           >
             <Search className="w-4 h-4 text-neutral-400" />
-            <span className="flex-1 text-left">Search 1,005 client-side tools...</span>
+            <span className="flex-1 text-left">Search {TOTAL_TOOLS_LABEL} client-side tools...</span>
             <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded shadow-xs">
               Ctrl K
             </kbd>
@@ -182,7 +182,7 @@ export default function Header() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search across all 1,005 tools (e.g. PDF merge, EMI, QR Code, PNG)..."
+                placeholder={`Search across all ${TOTAL_TOOLS_LABEL} tools (e.g. PDF merge, EMI, QR Code, PNG)...`}
                 className="w-full bg-transparent text-sm focus:outline-hidden text-neutral-900 dark:text-white placeholder-neutral-400"
               />
               {searchQuery && (

@@ -2,29 +2,93 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ToolDef } from '@/data/toolsRegistry';
-import { Upload, Download, Sliders } from 'lucide-react';
+import { Upload, Download, Sliders, CheckCircle2 } from 'lucide-react';
+
+async function compressCanvasToTargetKb(
+  canvas: HTMLCanvasElement,
+  mime: string,
+  targetKb: number
+): Promise<{ dataUrl: string; sizeKb: number }> {
+  const effectiveMime = mime === 'image/png' ? 'image/jpeg' : mime;
+  const maxBytes = targetKb * 1024;
+  let low = 0.05;
+  let high = 0.96;
+  let bestUrl = canvas.toDataURL(effectiveMime, 0.7);
+  let bestBytes = Math.floor((bestUrl.length * 3) / 4);
+
+  for (let i = 0; i < 8; i++) {
+    const mid = (low + high) / 2;
+    const candidate = canvas.toDataURL(effectiveMime, mid);
+    const bytes = Math.floor(((candidate.split(',')[1]?.length || candidate.length) * 3) / 4);
+    if (bytes <= maxBytes) {
+      bestUrl = candidate;
+      bestBytes = bytes;
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  // If still slightly above very tight targets (e.g. 5KB/10KB), proportionally downscale canvas
+  if (bestBytes > maxBytes) {
+    const scaleFactor = Math.max(0.2, Math.sqrt(maxBytes / bestBytes) * 0.92);
+    const temp = document.createElement('canvas');
+    temp.width = Math.max(24, Math.floor(canvas.width * scaleFactor));
+    temp.height = Math.max(24, Math.floor(canvas.height * scaleFactor));
+    temp.getContext('2d')?.drawImage(canvas, 0, 0, temp.width, temp.height);
+    const scaled = temp.toDataURL(effectiveMime, 0.7);
+    bestUrl = scaled;
+    bestBytes = Math.floor(((scaled.split(',')[1]?.length || scaled.length) * 3) / 4);
+  }
+
+  return { dataUrl: bestUrl, sizeKb: Number((bestBytes / 1024).toFixed(1)) };
+}
 
 export default function ImageEngine({ tool }: { tool: ToolDef }) {
+  const specW = typeof tool.spec?.width === 'number' ? tool.spec.width : 800;
+  const specH = typeof tool.spec?.height === 'number' ? tool.spec.height : 600;
+  const specTargetKb = typeof tool.spec?.targetKb === 'number' ? tool.spec.targetKb : 0;
+  const specFilter = typeof tool.spec?.filter === 'string' ? tool.spec.filter : '';
+
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('image.png');
-  const [targetWidth, setTargetWidth] = useState<number>(800);
-  const [targetHeight, setTargetHeight] = useState<number>(600);
+  const [targetWidth, setTargetWidth] = useState<number>(specW);
+  const [targetHeight, setTargetHeight] = useState<number>(specH);
+  const [targetKb, setTargetKb] = useState<number>(specTargetKb);
   const [quality, setQuality] = useState<number>(85);
-  const [rotateDeg, setRotateDeg] = useState<number>(0);
-  const [flipH, setFlipH] = useState<boolean>(false);
+  const [rotateDeg, setRotateDeg] = useState<number>(
+    specFilter === 'rotate90' ? 90 : specFilter === 'rotate180' ? 180 : specFilter === 'rotate270' ? 270 : 0
+  );
+  const [flipH, setFlipH] = useState<boolean>(specFilter === 'flipH');
   const [brightness, setBrightness] = useState<number>(100);
   const [contrast, setContrast] = useState<number>(100);
   const [saturation, setSaturation] = useState<number>(100);
-  const [blurPx, setBlurPx] = useState<number>(tool.slug.includes('blur') ? 10 : 0);
-  const [borderPx, setBorderPx] = useState<number>(tool.slug.includes('border') ? 32 : 0);
+  const [blurPx, setBlurPx] = useState<number>(
+    specFilter === 'blur' || tool.slug.includes('blur') ? 10 : 0
+  );
+  const [borderPx, setBorderPx] = useState<number>(
+    specFilter === 'border' || tool.slug.includes('border') ? 32 : 0
+  );
   const [watermark, setWatermark] = useState<string>('SnapTools');
   const [topMemeText, setTopMemeText] = useState<string>('WHEN THE CODE');
   const [bottomMemeText, setBottomMemeText] = useState<string>('WORKS FIRST TRY');
   const [asciiArt, setAsciiArt] = useState<string>('');
   const [pickedColor, setPickedColor] = useState<string>('#000000');
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+  const [outputSizeKb, setOutputSizeKb] = useState<number | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    setTargetWidth(typeof tool.spec?.width === 'number' ? tool.spec.width : 800);
+    setTargetHeight(typeof tool.spec?.height === 'number' ? tool.spec.height : 600);
+    setTargetKb(typeof tool.spec?.targetKb === 'number' ? tool.spec.targetKb : 0);
+    const f = typeof tool.spec?.filter === 'string' ? tool.spec.filter : '';
+    setRotateDeg(f === 'rotate90' ? 90 : f === 'rotate180' ? 180 : f === 'rotate270' ? 270 : 0);
+    setFlipH(f === 'flipH');
+    setBlurPx(f === 'blur' || tool.slug.includes('blur') ? 10 : 0);
+    setBorderPx(f === 'border' || tool.slug.includes('border') ? 32 : 0);
+  }, [tool]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -40,10 +104,12 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
 
   useEffect(() => {
     if (!imageSrc) return;
+    let cancelled = false;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = imageSrc;
-    img.onload = () => {
+    img.onload = async () => {
+      if (cancelled) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
@@ -52,21 +118,30 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
       let w = img.width;
       let h = img.height;
 
-      if (tool.slug.includes('passport')) {
+      const hasFixedDimPreset =
+        typeof tool.spec?.width === 'number' && typeof tool.spec?.height === 'number';
+
+      if (hasFixedDimPreset || tool.slug.includes('resiz')) {
+        w = targetWidth || img.width;
+        h = targetHeight || img.height;
+      } else if (tool.slug.includes('passport')) {
         w = 350;
         h = 450;
       } else if (tool.slug.includes('visa')) {
         w = 600;
         h = 600;
-      } else if (tool.slug.includes('avatar') || tool.slug.includes('square') || tool.slug.includes('1-1')) {
+      } else if (
+        specFilter === 'square' ||
+        specFilter === 'circle' ||
+        tool.slug.includes('avatar') ||
+        tool.slug.includes('square') ||
+        tool.slug.includes('1-1')
+      ) {
         const minDim = Math.min(w, h);
         w = minDim;
         h = minDim;
       } else if (tool.slug.includes('16-9')) {
         h = Math.round((w * 9) / 16);
-      } else if (tool.slug.includes('resiz')) {
-        w = targetWidth || img.width;
-        h = targetHeight || img.height;
       }
 
       const rotated90 = rotateDeg === 90 || rotateDeg === 270;
@@ -86,7 +161,7 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
       ctx.rotate((rotateDeg * Math.PI) / 180);
       ctx.scale(flipH ? -1 : 1, 1);
 
-      if (tool.slug.includes('avatar') || tool.slug.includes('round')) {
+      if (specFilter === 'circle' || tool.slug.includes('avatar') || tool.slug.includes('round')) {
         ctx.beginPath();
         ctx.arc(0, 0, Math.min(w, h) / 2, 0, Math.PI * 2);
         ctx.closePath();
@@ -98,15 +173,19 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
       if (contrast !== 100) filters.push(`contrast(${contrast}%)`);
       if (saturation !== 100) filters.push(`saturate(${saturation}%)`);
       if (blurPx > 0) filters.push(`blur(${blurPx}px)`);
-      if (tool.slug.includes('grayscale') || tool.slug.includes('black-white')) filters.push('grayscale(100%)');
-      if (tool.slug.includes('sepia')) filters.push('sepia(100%)');
+      if (specFilter === 'grayscale' || tool.slug.includes('grayscale') || tool.slug.includes('black-white')) {
+        filters.push('grayscale(100%)');
+      }
+      if (specFilter === 'sepia' || tool.slug.includes('sepia')) {
+        filters.push('sepia(100%)');
+      }
       ctx.filter = filters.length > 0 ? filters.join(' ') : 'none';
 
       ctx.drawImage(img, -w / 2, -h / 2, w, h);
       ctx.restore();
       ctx.filter = 'none';
 
-      if (tool.slug.includes('pixelate')) {
+      if (specFilter === 'pixelate' || tool.slug.includes('pixelate')) {
         const block = 12;
         const smallCanvas = document.createElement('canvas');
         smallCanvas.width = Math.max(4, Math.floor(outW / block));
@@ -165,16 +244,36 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
         }
       }
 
-      let mime = 'image/png';
-      if (tool.slug.includes('jpg') || tool.slug.includes('jpeg')) mime = 'image/jpeg';
-      else if (tool.slug.includes('webp')) mime = 'image/webp';
+      let mime = typeof tool.spec?.outputFormat === 'string' ? tool.spec.outputFormat : 'image/png';
+      if (!tool.spec?.outputFormat) {
+        if (tool.slug.includes('jpg') || tool.slug.includes('jpeg')) mime = 'image/jpeg';
+        else if (tool.slug.includes('webp')) mime = 'image/webp';
+      }
 
-      setProcessedUrl(canvas.toDataURL(mime, quality / 100));
+      if (targetKb > 0) {
+        const compressed = await compressCanvasToTargetKb(canvas, mime, targetKb);
+        if (!cancelled) {
+          setProcessedUrl(compressed.dataUrl);
+          setOutputSizeKb(compressed.sizeKb);
+        }
+      } else {
+        const url = canvas.toDataURL(mime, quality / 100);
+        const bytes = Math.floor(((url.split(',')[1]?.length || url.length) * 3) / 4);
+        if (!cancelled) {
+          setProcessedUrl(url);
+          setOutputSizeKb(Number((bytes / 1024).toFixed(1)));
+        }
+      }
+    };
+
+    return () => {
+      cancelled = true;
     };
   }, [
     imageSrc,
     targetWidth,
     targetHeight,
+    targetKb,
     quality,
     rotateDeg,
     flipH,
@@ -186,7 +285,8 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
     watermark,
     topMemeText,
     bottomMemeText,
-    tool.slug,
+    tool,
+    specFilter,
   ]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -202,6 +302,13 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
     setPickedColor(hex);
   };
 
+  const outExt =
+    tool.spec?.outputFormat === 'image/webp' || tool.slug.includes('webp')
+      ? 'webp'
+      : tool.spec?.outputFormat === 'image/jpeg' || tool.slug.includes('jpg') || tool.slug.includes('jpeg') || targetKb > 0
+        ? 'jpg'
+        : 'png';
+
   return (
     <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
       <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl hover:border-blue-500 hover:bg-blue-50/20 dark:hover:bg-blue-950/20 cursor-pointer transition text-center group">
@@ -209,13 +316,19 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
         <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
           Upload an image (PNG, JPG, WebP, SVG, BMP)
         </span>
-        <span className="text-xs text-neutral-500 mt-1">Processed 100% locally in your browser memory</span>
+        <span className="text-xs text-neutral-500 mt-1">
+          {targetKb > 0
+            ? `Target exact file size: ${targetKb} KB (100% browser memory)`
+            : typeof tool.spec?.width === 'number'
+              ? `Preset output dimensions: ${targetWidth}×${targetHeight} px`
+              : 'Processed 100% locally in your browser memory'}
+        </span>
         <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
       </label>
 
       {imageSrc && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
-          {tool.slug.includes('resiz') && (
+          {(tool.slug.includes('resiz') || typeof tool.spec?.width === 'number') && (
             <>
               <div>
                 <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Width (px)</label>
@@ -236,6 +349,33 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
                 />
               </div>
             </>
+          )}
+
+          {(targetKb > 0 || tool.slug.includes('compress')) && (
+            <div>
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
+                {targetKb > 0 ? `Target Size (KB)` : `Quality: ${quality}%`}
+              </label>
+              {targetKb > 0 ? (
+                <input
+                  type="number"
+                  min={5}
+                  max={5000}
+                  value={targetKb}
+                  onChange={(e) => setTargetKb(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-xs font-mono"
+                />
+              ) : (
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  value={quality}
+                  onChange={(e) => setQuality(Number(e.target.value))}
+                  className="w-full"
+                />
+              )}
+            </div>
           )}
 
           {(tool.slug.includes('rotat') || tool.slug.includes('flip')) && (
@@ -284,24 +424,17 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
             </>
           )}
 
-          {tool.slug.includes('blur') && (
+          {(specFilter === 'blur' || tool.slug.includes('blur')) && (
             <div>
               <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Blur Radius: {blurPx}px</label>
               <input type="range" min={0} max={30} value={blurPx} onChange={(e) => setBlurPx(Number(e.target.value))} className="w-full" />
             </div>
           )}
 
-          {tool.slug.includes('border') && (
+          {(specFilter === 'border' || tool.slug.includes('border')) && (
             <div>
               <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">White Border: {borderPx}px</label>
               <input type="range" min={0} max={100} value={borderPx} onChange={(e) => setBorderPx(Number(e.target.value))} className="w-full" />
-            </div>
-          )}
-
-          {tool.slug.includes('compress') && (
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Quality: {quality}%</label>
-              <input type="range" min={10} max={100} value={quality} onChange={(e) => setQuality(Number(e.target.value))} className="w-full" />
             </div>
           )}
 
@@ -372,7 +505,7 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
         )}
       </div>
 
-      {tool.slug.includes('base64') && processedUrl && (
+      {(specFilter === 'base64' || tool.slug.includes('base64')) && processedUrl && (
         <textarea
           readOnly
           rows={4}
@@ -382,20 +515,19 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
       )}
 
       {processedUrl && (
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <a
             href={processedUrl}
-            download={`processed-${fileName.replace(/\.[^.]+$/, '')}.${
-              tool.slug.includes('jpg') || tool.slug.includes('jpeg')
-                ? 'jpg'
-                : tool.slug.includes('webp')
-                  ? 'webp'
-                  : 'png'
-            }`}
+            download={`processed-${fileName.replace(/\.[^.]+$/, '')}.${outExt}`}
             className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md shadow-blue-500/20 flex items-center gap-2 transition"
           >
-            <Download className="w-4 h-4" /> Download Processed Image
+            <Download className="w-4 h-4" /> Download Result ({outputSizeKb ? `${outputSizeKb} KB` : outExt.toUpperCase()})
           </a>
+          {outputSizeKb !== null && targetKb > 0 && (
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" /> Output optimized to {outputSizeKb} KB (Target: {targetKb} KB)
+            </span>
+          )}
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 
 interface LogoProps {
   className?: string;
@@ -77,7 +78,7 @@ export default function Logo({ className = '', showTagline = false }: LogoProps)
         </div>
         {showTagline ? (
           <span className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
-            1,005 Fast &amp; Private Micro-Tools
+            {TOTAL_TOOLS_LABEL} Fast &amp; Private Micro-Tools
           </span>
         ) : (
           <span className="text-[10px] text-neutral-400 font-mono tracking-wider uppercase">

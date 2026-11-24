@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import { ShieldCheck, Lock, EyeOff, Cookie, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { SITE_URL } from '@/lib/siteConfig';
+import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy - SnapTools',
@@ -32,7 +33,7 @@ export default function PrivacyPolicyPage() {
         <Lock className="w-6 h-6 text-emerald-600 mt-1 shrink-0" />
         <div className="text-xs leading-relaxed text-emerald-900 dark:text-emerald-200">
           <strong className="block text-sm font-bold mb-1">Our Core Commitment to Your Privacy</strong>
-          SnapTools operates with a strict zero-database, zero-server-upload architecture. When you upload a PDF, image, audio file, or text payload into any of our 1,005 micro-tools, that file is processed strictly inside your device&apos;s local web browser memory (RAM) using HTML5 Canvas, WebAssembly, and native Web APIs. Your files and confidential data never leave your computer and are never transmitted to our servers or third-party clouds.
+          SnapTools operates with a strict zero-database, zero-server-upload architecture. When you upload a PDF, image, audio file, or text payload into any of our {TOTAL_TOOLS_LABEL} micro-tools, that file is processed strictly inside your device&apos;s local web browser memory (RAM) using HTML5 Canvas, WebAssembly, and native Web APIs. Your files and confidential data never leave your computer and are never transmitted to our servers or third-party clouds.
         </div>
       </div>
 
@@ -71,7 +72,7 @@ export default function PrivacyPolicyPage() {
             <h3>3. Google AdSense &amp; Third-Party Advertising Policy Compliance</h3>
           </div>
           <p>
-            This website is monetized through <strong>Google AdSense</strong> to ensure all 1,005 micro-tools remain 100% free forever. In accordance with Google&apos;s official Publisher Policies, please note the following disclosure:
+            This website is monetized through <strong>Google AdSense</strong> to ensure all {TOTAL_TOOLS_LABEL} micro-tools remain 100% free forever. In accordance with Google&apos;s official Publisher Policies, please note the following disclosure:
           </p>
           <ul className="list-disc pl-5 space-y-1.5">
             <li>

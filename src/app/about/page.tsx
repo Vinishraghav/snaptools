@@ -4,11 +4,12 @@ import { Shield, Zap, Lock, Heart, Coffee, UserCheck, Sparkles, Mail, Users } fr
 import Link from 'next/link';
 import Logo from '@/components/brand/Logo';
 import { SITE_URL } from '@/lib/siteConfig';
+import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 
 export const metadata: Metadata = {
   title: 'About SnapTools - 100% Client-Side Web Utilities',
   description:
-    'The story behind SnapTools. Built to provide 1,005 free, lightning-fast, and completely private browser tools with zero tracking.',
+    `The story behind SnapTools. Built to provide ${TOTAL_TOOLS_LABEL} free, lightning-fast, and completely private browser tools with zero tracking.`,
   alternates: {
     canonical: `${SITE_URL}/about`,
   },
@@ -51,7 +52,7 @@ export default function AboutPage() {
           We believed there had to be a better, more respectful way. Modern browsers are incredibly powerful computing environments equipped with WebAssembly, Canvas rendering, and Web Audio APIs. There is absolutely no reason for a server to touch your bank statements, passport photos, or spreadsheets.
         </p>
         <p>
-          So, we built <strong>SnapTools</strong> as a pure client-side utility suite. Every single one of these 1,005 micro-tools executes 100% inside your browser memory. Nothing ever leaves your computer. No accounts, no paywalls, no nonsense.&rdquo;
+          So, we built <strong>SnapTools</strong> as a pure client-side utility suite. Every single one of these {TOTAL_TOOLS_LABEL} micro-tools executes 100% inside your browser memory. Nothing ever leaves your computer. No accounts, no paywalls, no nonsense.&rdquo;
         </p>
       </div>
 

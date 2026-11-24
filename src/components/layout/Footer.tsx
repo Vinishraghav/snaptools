@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 import { CATEGORIES } from '@/data/categories';
 import { Shield, Zap, Lock, Heart, Coffee } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
@@ -35,7 +36,7 @@ export default function Footer() {
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-semibold text-neutral-900 dark:text-white">1,005 Specialized Micro-Tools</div>
+              <div className="font-semibold text-neutral-900 dark:text-white">{TOTAL_TOOLS_LABEL} Specialized Micro-Tools</div>
               <div className="text-neutral-500 text-[11px]">Calculators, converters, PDF editors, image optimizers & more.</div>
             </div>
           </div>
@@ -51,7 +52,10 @@ export default function Footer() {
                 href={`/category/${cat.slug}`}
                 className="font-semibold text-neutral-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition block text-xs"
               >
-                {cat.name}
+                {cat.name}{' '}
+                <span className="text-[10px] font-mono text-neutral-400 font-normal">
+                  ({cat.count})
+                </span>
               </Link>
               <div className="text-[11px] text-neutral-500">
                 {cat.count} micro-tools

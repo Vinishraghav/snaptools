@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ToolDef } from '@/data/toolsRegistry';
+import { ToolDef, TOTAL_TOOLS_COUNT } from '@/data/toolsRegistry';
 import * as yaml from 'js-yaml';
 import {
   Copy,
@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 const SAMPLES: Record<string, string> = {
-  json: '{\n  "name": "SnapTools",\n  "count": 1005,\n  "clientSide": true,\n  "categories": ["pdf", "image", "dev"]\n}',
+  json: `{\n  "name": "SnapTools",\n  "count": ${TOTAL_TOOLS_COUNT},\n  "clientSide": true,\n  "categories": ["pdf", "image", "dev"]\n}`,
   sql: 'select id, name, department, salary from employees where status = "active" and salary > 50000 order by salary desc limit 25;',
   html: '<div class="card"><h2>SnapTools</h2><p>Fast <strong>client-side</strong> web utilities.</p></div>',
   xml: '<catalog><tool id="1"><name>JSON Formatter</name><category>Developer</category></tool></catalog>',
@@ -35,7 +35,7 @@ function getInitialSample(slug: string): string {
   if (slug.includes('yaml') && !slug.includes('json-to-yaml')) return SAMPLES.yaml;
   if (slug.includes('markdown')) return SAMPLES.markdown;
   if (slug.includes('curl')) return SAMPLES.curl;
-  if (slug.includes('regex')) return 'Contact support@snaptools.app or dev@example.org for API keys #v2 #fast';
+  if (slug.includes('regex')) return 'Test input: ABCDE1234F | dev@snaptools.app | https://snaptools-app.vercel.app | +91-9876543210 | 2026-11-25 | #f3f4f6 | 192.168.1.1';
   return SAMPLES.json;
 }
 
@@ -84,22 +84,42 @@ function formatCss(css: string, minify: boolean): string {
 }
 
 export default function DeveloperEngine({ tool }: { tool: ToolDef }) {
+  const spec = (tool.spec ?? {}) as Record<string, unknown>;
+  const specRegex = typeof spec.regexPattern === 'string'
+    ? spec.regexPattern
+    : '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,}';
+  const specActionMode: 'format' | 'minify' =
+    spec.mode === 'minify' || spec.mode === 'format'
+      ? spec.mode
+      : tool.slug.includes('minif')
+        ? 'minify'
+        : 'format';
+
   const [inputCode, setInputCode] = useState(() => getInitialSample(tool.slug));
   const [outputCode, setOutputCode] = useState('');
   const [error, setError] = useState('');
   const [validBanner, setValidBanner] = useState('');
   const [copied, setCopied] = useState(false);
-  const [regexPattern, setRegexPattern] = useState('[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,}');
+  const [regexPattern, setRegexPattern] = useState(specRegex);
   const [regexFlags, setRegexFlags] = useState('gi');
-  const [actionMode, setActionMode] = useState<'format' | 'minify'>(
-    tool.slug.includes('minif') ? 'minify' : 'format'
-  );
+  const [actionMode, setActionMode] = useState<'format' | 'minify'>(specActionMode);
   const [activeKey, setActiveKey] = useState<{ key: string; code: string; keyCode: number } | null>(null);
 
   useEffect(() => {
     setInputCode(getInitialSample(tool.slug));
-    setActionMode(tool.slug.includes('minif') ? 'minify' : 'format');
-  }, [tool.slug]);
+    setRegexPattern(
+      typeof spec.regexPattern === 'string'
+        ? spec.regexPattern
+        : '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,}'
+    );
+    setActionMode(
+      spec.mode === 'minify' || spec.mode === 'format'
+        ? spec.mode
+        : tool.slug.includes('minif')
+          ? 'minify'
+          : 'format'
+    );
+  }, [tool.slug, spec.regexPattern, spec.mode]);
 
   useEffect(() => {
     if (tool.slug.includes('keycode')) {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import HomeClient from '@/components/home/HomeClient';
 import { SITE_URL, SITE_NAME } from '@/lib/siteConfig';
+import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 
 export const metadata: Metadata = {
   alternates: {
@@ -15,7 +16,7 @@ export default function HomePage() {
     name: SITE_NAME,
     url: SITE_URL,
     description:
-      '1,005 handcrafted, 100% client-side micro-tools for PDF, image optimization, developer code, data, finance, health, and unit conversions.',
+      `${TOTAL_TOOLS_LABEL} handcrafted, 100% client-side micro-tools for PDF, image optimization, developer code, data, finance, health, and unit conversions.`,
   };
 
   return (

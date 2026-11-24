@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { SITE_URL } from '@/lib/siteConfig';
+import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 
 export const metadata: Metadata = {
   title: 'Terms of Service - SnapTools',
@@ -34,7 +35,7 @@ export default function TermsPage() {
         <section className="space-y-2">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">2. Use License &amp; Free Access</h2>
           <p>
-            Permission is granted to use all 1,005 micro-tools available on SnapTools for personal, educational, professional, and commercial purposes completely free of charge. You agree not to attempt to reverse engineer, disrupt, scrap excessively, or overload the platform infrastructure.
+            Permission is granted to use all {TOTAL_TOOLS_LABEL} micro-tools available on SnapTools for personal, educational, professional, and commercial purposes completely free of charge. You agree not to attempt to reverse engineer, disrupt, scrap excessively, or overload the platform infrastructure.
           </p>
         </section>
 

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ExternalLink, Sparkles, Zap, Info } from 'lucide-react';
+import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 
 interface AdSlotProps {
   slotId?: string;
@@ -200,7 +201,7 @@ export default function AdSlot({
                   Discover exclusive developer tools, cloud hosting &amp; software deals
                 </p>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 line-clamp-1">
-                  Supports keeping all 1,005 SnapTools free forever
+                  Supports keeping all {TOTAL_TOOLS_LABEL} SnapTools free forever
                 </p>
               </div>
             </div>
