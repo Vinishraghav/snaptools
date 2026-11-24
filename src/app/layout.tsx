@@ -49,6 +49,14 @@ export const metadata: Metadata = {
     title: 'SnapTools - 1,005 Free Handcrafted Micro-Tools',
     description: '100% client-side privacy. Zero file uploads. Fast & reliable web utilities.',
   },
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/icon.svg',
+    apple: '/apple-icon.svg',
+  },
 };
 
 export default function RootLayout({
