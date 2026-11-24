@@ -82,12 +82,6 @@ export default function RootLayout({
           name="google-site-verification"
           content="google562716ed7142a0a3"
         />
-        {/* Adsterra Popunder Ad Script */}
-        <script
-          async
-          data-cfasync="false"
-          src="https://abscloud.org/1/ebc859b77afbd48754a613c6f1528b9f"
-        />
         {/* Google AdSense Site Verification & Script (Active when ID is configured) */}
         {adsenseId && (
           <>
