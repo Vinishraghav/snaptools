@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ToolDef } from '@/data/toolsRegistry';
-import { ArrowRightLeft, Ruler, Scale, Thermometer, HardDrive, Gauge, Copy, Check } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 
 interface UnitGroup {
   name: string;
@@ -35,15 +35,33 @@ const UNIT_GROUPS: Record<string, UnitGroup> = {
       metric_ton: 1000,
       ounce: 0.0283495,
       pound: 0.453592,
+      tola_india: 0.0116638,
+      troy_ounce: 0.0311035,
+      carat: 0.0002,
     },
   },
   temperature: {
     name: 'Temperature',
     baseUnit: 'celsius',
     units: {
-      celsius: (v, toBase) => v,
+      celsius: (v) => v,
       fahrenheit: (v, toBase) => (toBase ? ((v - 32) * 5) / 9 : (v * 9) / 5 + 32),
       kelvin: (v, toBase) => (toBase ? v - 273.15 : v + 273.15),
+    },
+  },
+  volume: {
+    name: 'Volume / Liquid',
+    baseUnit: 'liter',
+    units: {
+      milliliter: 0.001,
+      teaspoon_tsp: 0.00492892,
+      tablespoon_tbsp: 0.0147868,
+      cup_us: 0.236588,
+      pint_us: 0.473176,
+      quart_us: 0.946353,
+      liter: 1,
+      gallon_us: 3.78541,
+      cubic_meter: 1000,
     },
   },
   storage: {
@@ -56,6 +74,35 @@ const UNIT_GROUPS: Record<string, UnitGroup> = {
       megabyte: 1,
       gigabyte: 1024,
       terabyte: 1024 * 1024,
+      petabyte: 1024 * 1024 * 1024,
+    },
+  },
+  transfer: {
+    name: 'Data Transfer Rate',
+    baseUnit: 'mbps',
+    units: {
+      bps: 0.000001,
+      kbps: 0.001,
+      mbps: 1,
+      gbps: 1000,
+      KB_per_sec: 0.008,
+      MB_per_sec: 8,
+      GB_per_sec: 8000,
+    },
+  },
+  time: {
+    name: 'Time',
+    baseUnit: 'second',
+    units: {
+      nanosecond: 1e-9,
+      microsecond: 1e-6,
+      millisecond: 0.001,
+      second: 1,
+      minute: 60,
+      hour: 3600,
+      day: 86400,
+      week: 604800,
+      year_365: 31536000,
     },
   },
   speed: {
@@ -73,24 +120,172 @@ const UNIT_GROUPS: Record<string, UnitGroup> = {
     name: 'Area',
     baseUnit: 'sq_meter',
     units: {
-      sq_meter: 1,
+      sq_millimeter: 0.000001,
+      sq_centimeter: 0.0001,
       sq_feet: 0.092903,
+      sq_meter: 1,
       acre: 4046.86,
       hectare: 10000,
       sq_km: 1000000,
     },
   },
+  pressure: {
+    name: 'Pressure',
+    baseUnit: 'kilopascal',
+    units: {
+      pascal: 0.001,
+      kilopascal: 1,
+      bar: 100,
+      psi: 6.89476,
+      atm: 101.325,
+      mmHg_torr: 0.133322,
+    },
+  },
+  energy: {
+    name: 'Energy',
+    baseUnit: 'kilojoule',
+    units: {
+      joule: 0.001,
+      kilojoule: 1,
+      calorie: 0.004184,
+      kilocalorie_kcal: 4.184,
+      watt_hour: 3.6,
+      kilowatt_hour_kWh: 3600,
+      btu: 1.05506,
+    },
+  },
+  power: {
+    name: 'Power',
+    baseUnit: 'watt',
+    units: {
+      watt: 1,
+      kilowatt: 1000,
+      megawatt: 1000000,
+      horsepower_hp: 745.7,
+      btu_per_hour: 0.293071,
+    },
+  },
+  force: {
+    name: 'Force',
+    baseUnit: 'newton',
+    units: {
+      dyne: 0.00001,
+      newton: 1,
+      kilonewton: 1000,
+      kgf: 9.80665,
+      pound_force_lbf: 4.44822,
+    },
+  },
+  torque: {
+    name: 'Torque',
+    baseUnit: 'newton_meter',
+    units: {
+      newton_meter: 1,
+      lb_ft: 1.35582,
+      kgf_meter: 9.80665,
+    },
+  },
+  density: {
+    name: 'Density',
+    baseUnit: 'kg_per_m3',
+    units: {
+      kg_per_m3: 1,
+      g_per_cm3: 1000,
+      lb_per_ft3: 16.0185,
+    },
+  },
+  angle: {
+    name: 'Angle',
+    baseUnit: 'degree',
+    units: {
+      degree: 1,
+      radian: 180 / Math.PI,
+      gradian: 0.9,
+      arcminute: 1 / 60,
+    },
+  },
+  frequency: {
+    name: 'Frequency',
+    baseUnit: 'hertz',
+    units: {
+      hertz_hz: 1,
+      kilohertz_khz: 1000,
+      megahertz_mhz: 1000000,
+      gigahertz_ghz: 1000000000,
+    },
+  },
+  typography: {
+    name: 'Typography / Pixels',
+    baseUnit: 'px_96dpi',
+    units: {
+      px_96dpi: 1,
+      pt_point: 96 / 72,
+      em_16px: 16,
+      millimeter: 96 / 25.4,
+      centimeter: 96 / 2.54,
+      inch: 96,
+    },
+  },
+  charge: {
+    name: 'Electric Charge',
+    baseUnit: 'mAh',
+    units: {
+      coulomb: 1 / 3.6,
+      mAh: 1,
+      Ah: 1000,
+      faraday: 26801480,
+    },
+  },
+  fuel: {
+    name: 'Fuel Economy',
+    baseUnit: 'km_per_liter',
+    units: {
+      km_per_liter: 1,
+      mpg_us: 0.425144,
+      mpg_uk: 0.354006,
+      liters_per_100km: (v) => (v > 0 ? 100 / v : 0),
+    },
+  },
+  astronomical: {
+    name: 'Astronomical Distance',
+    baseUnit: 'kilometer',
+    units: {
+      kilometer: 1,
+      au_astronomical_unit: 149597870.7,
+      light_year: 9.4607e12,
+      parsec: 3.0857e13,
+    },
+  },
 };
 
+function detectUnitGroup(slug: string): string {
+  if (slug.includes('number-base') || slug.includes('bin-oct-dec-hex')) return 'number-base';
+  if (slug.includes('transfer-rate') || slug.includes('bandwidth')) return 'transfer';
+  if (slug.includes('binary-vs-decimal') || slug.includes('storage') || slug.includes('download-time')) return 'storage';
+  if (slug.includes('volume') || slug.includes('cooking') || slug.includes('butter-flour') || slug.includes('flow-rate')) return 'volume';
+  if (slug.includes('time-converter') || slug.includes('beat-rate')) return 'time';
+  if (slug.includes('pressure')) return 'pressure';
+  if (slug.includes('energy')) return 'energy';
+  if (slug.includes('power')) return 'power';
+  if (slug.includes('force') || slug.includes('acceleration')) return 'force';
+  if (slug.includes('torque')) return 'torque';
+  if (slug.includes('density') || slug.includes('concentration')) return 'density';
+  if (slug.includes('angle')) return 'angle';
+  if (slug.includes('frequency') || slug.includes('wavelength')) return 'frequency';
+  if (slug.includes('typography') || slug.includes('pixels-to')) return 'typography';
+  if (slug.includes('charge') || slug.includes('inductance')) return 'charge';
+  if (slug.includes('fuel') || slug.includes('mileage')) return 'fuel';
+  if (slug.includes('astronomical')) return 'astronomical';
+  if (slug.includes('weight') || slug.includes('mass') || slug.includes('gold') || slug.includes('carat') || slug.includes('yarn')) return 'weight';
+  if (slug.includes('temperature') || slug.includes('oven')) return 'temperature';
+  if (slug.includes('speed') || slug.includes('wind-speed')) return 'speed';
+  if (slug.includes('area') || slug.includes('acre') || slug.includes('paper-size')) return 'area';
+  return 'length';
+}
+
 export default function ConverterEngine({ tool }: { tool: ToolDef }) {
-  // Detect group from tool slug
-  let detectedType = 'length';
-  const slug = tool.slug;
-  if (slug.includes('weight') || slug.includes('mass') || slug.includes('gold-weight')) detectedType = 'weight';
-  else if (slug.includes('temperature') || slug.includes('oven')) detectedType = 'temperature';
-  else if (slug.includes('storage') || slug.includes('download-time') || slug.includes('bandwidth')) detectedType = 'storage';
-  else if (slug.includes('speed') || slug.includes('mileage')) detectedType = 'speed';
-  else if (slug.includes('area') || slug.includes('feet-to-meter') || slug.includes('acre')) detectedType = 'area';
+  const detectedType = detectUnitGroup(tool.slug);
+  const isNumberBase = detectedType === 'number-base';
 
   const group = UNIT_GROUPS[detectedType] || UNIT_GROUPS.length;
   const unitKeys = Object.keys(group.units);
@@ -99,7 +294,17 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
   const [inputValue, setInputValue] = useState<number>(100);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Compute base value
+  // Number base state
+  const [baseInput, setBaseInput] = useState<string>('255');
+  const [sourceBase, setSourceBase] = useState<number>(10);
+
+  // Reset fromUnit whenever tool changes
+  useEffect(() => {
+    const grp = UNIT_GROUPS[detectUnitGroup(tool.slug)] || UNIT_GROUPS.length;
+    const keys = Object.keys(grp.units);
+    setFromUnit(keys[1] || keys[0]);
+  }, [tool.slug]);
+
   const toBaseValue = (val: number, unit: string): number => {
     const factor = group.units[unit];
     if (typeof factor === 'function') {
@@ -108,7 +313,6 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
     return val * (factor || 1);
   };
 
-  // Compute target value from base
   const fromBaseValue = (baseVal: number, unit: string): number => {
     const factor = group.units[unit];
     if (typeof factor === 'function') {
@@ -125,13 +329,83 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
     setTimeout(() => setCopiedKey(null), 1500);
   };
 
+  if (isNumberBase) {
+    const parsedDec = parseInt(baseInput.trim(), sourceBase);
+    const isValid = !isNaN(parsedDec);
+    const bases = [
+      { label: 'Binary (Base 2)', base: 2 },
+      { label: 'Octal (Base 8)', base: 8 },
+      { label: 'Decimal (Base 10)', base: 10 },
+      { label: 'Hexadecimal (Base 16)', base: 16 },
+      { label: 'Base 36', base: 36 },
+    ];
+
+    return (
+      <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
+        <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+          <div>
+            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+              Input Number
+            </label>
+            <input
+              type="text"
+              value={baseInput}
+              onChange={(e) => setBaseInput(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-lg font-mono font-bold focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+              Input Base (Radix)
+            </label>
+            <select
+              value={sourceBase}
+              onChange={(e) => setSourceBase(Number(e.target.value))}
+              className="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm font-semibold focus:outline-hidden"
+            >
+              {bases.map((b) => (
+                <option key={b.base} value={b.base}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {bases.map((b) => {
+            const val = isValid ? parsedDec.toString(b.base).toUpperCase() : 'Invalid Input';
+            return (
+              <div
+                key={b.base}
+                onClick={() => isValid && handleCopy(val, String(b.base))}
+                className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/60 cursor-pointer flex items-center justify-between hover:border-blue-500 transition"
+              >
+                <div className="min-w-0 pr-2">
+                  <div className="text-[11px] font-medium text-neutral-500">{b.label}</div>
+                  <div className="text-base font-mono font-bold text-neutral-900 dark:text-white break-all mt-0.5">
+                    {val}
+                  </div>
+                </div>
+                {copiedKey === String(b.base) ? (
+                  <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                ) : (
+                  <Copy className="w-4 h-4 text-neutral-400 shrink-0" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
-      {/* Primary Input row */}
       <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
         <div>
           <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-            Enter Value to Convert
+            Enter {group.name} Value
           </label>
           <input
             type="number"
@@ -158,18 +432,19 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
         </div>
       </div>
 
-      {/* Simultaneous All-Unit Conversion Matrix */}
       <div>
         <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">
-          Simultaneous Multi-Unit Output Matrix
+          {group.name} Conversion Matrix
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {unitKeys.map((u) => {
             const converted = fromBaseValue(baseVal, u);
             const formatted =
-              Math.abs(converted) < 0.0001 || Math.abs(converted) > 1000000
-                ? converted.toExponential(4)
-                : Number(converted.toFixed(6)).toString();
+              converted === 0
+                ? '0'
+                : Math.abs(converted) < 0.0001 || Math.abs(converted) > 1000000
+                  ? converted.toExponential(4)
+                  : Number(converted.toFixed(6)).toString();
 
             const isCurrent = u === fromUnit;
 
@@ -183,14 +458,20 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
                     : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-950/40'
                 }`}
               >
-                <div>
-                  <div className="text-[11px] font-medium text-neutral-500 capitalize">{u.replace(/_/g, ' ')}</div>
-                  <div className="text-base font-mono font-bold text-neutral-900 dark:text-white mt-0.5">
+                <div className="min-w-0 pr-2">
+                  <div className="text-[11px] font-medium text-neutral-500 capitalize">
+                    {u.replace(/_/g, ' ')}
+                  </div>
+                  <div className="text-base font-mono font-bold text-neutral-900 dark:text-white mt-0.5 truncate">
                     {formatted}
                   </div>
                 </div>
-                <div className="text-neutral-400 group-hover:text-blue-500">
-                  {copiedKey === u ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                <div className="text-neutral-400 group-hover:text-blue-500 shrink-0">
+                  {copiedKey === u ? (
+                    <Check className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
                 </div>
               </div>
             );

@@ -178,6 +178,8 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
   const [oddEvenMode, setOddEvenMode] = useState<'odd' | 'even'>('odd');
   const [imagePageSize, setImagePageSize] = useState<'fit' | 'a4' | 'letter'>('a4');
   const [imageMargin, setImageMargin] = useState<number>(20);
+  const [metaTitle, setMetaTitle] = useState('SnapTools Document');
+  const [metaAuthor, setMetaAuthor] = useState('SnapTools User');
 
   // Generator controls
   const [invoiceName, setInvoiceName] = useState('Acme Corp');
@@ -577,6 +579,47 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
           setDownloadUrl(URL.createObjectURL(blob));
           setDownloadName('reversed.pdf');
           setStatusMessage(`Reversed order of all ${total} pages!`);
+        } else if (tool.slug.includes('resize-to-a4') || tool.slug.includes('resize-to-letter')) {
+          const isA4 = tool.slug.includes('a4');
+          const targetW = isA4 ? 595.28 : 612;
+          const targetH = isA4 ? 841.89 : 792;
+          const resizedDoc = await PDFDocument.create();
+          const embeddedPages = await resizedDoc.embedPages(doc.getPages());
+          for (const ep of embeddedPages) {
+            const scale = Math.min(targetW / ep.width, targetH / ep.height);
+            const p = resizedDoc.addPage([targetW, targetH]);
+            p.drawPage(ep, {
+              x: (targetW - ep.width * scale) / 2,
+              y: (targetH - ep.height * scale) / 2,
+              width: ep.width * scale,
+              height: ep.height * scale,
+            });
+          }
+          const pdfBytes = await resizedDoc.save();
+          const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
+          setDownloadUrl(URL.createObjectURL(blob));
+          setDownloadName(isA4 ? 'resized-a4.pdf' : 'resized-letter.pdf');
+          setStatusMessage(`Resized all ${total} pages to ${isA4 ? 'A4' : 'US Letter'}!`);
+        } else if (tool.slug.includes('metadata-editor')) {
+          doc.setTitle(metaTitle);
+          doc.setAuthor(metaAuthor);
+          doc.setCreator('SnapTools PDF Editor');
+          const pdfBytes = await doc.save();
+          const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
+          setDownloadUrl(URL.createObjectURL(blob));
+          setDownloadName(`updated-meta-${files[0].name}`);
+          setStatusMessage(`Updated PDF metadata Title="${metaTitle}" & Author="${metaAuthor}"!`);
+        } else if (tool.slug.includes('header-footer')) {
+          doc.getPages().forEach((page) => {
+            const { width, height } = page.getSize();
+            page.drawText(metaTitle || 'SnapTools Header', { x: 40, y: height - 28, size: 10, color: rgb(0.35, 0.35, 0.35) });
+            page.drawText(metaAuthor || 'SnapTools Footer', { x: 40, y: 20, size: 10, color: rgb(0.35, 0.35, 0.35) });
+          });
+          const pdfBytes = await doc.save();
+          const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
+          setDownloadUrl(URL.createObjectURL(blob));
+          setDownloadName(`header-footer-${files[0].name}`);
+          setStatusMessage(`Added custom header & footer to all ${total} pages!`);
         } else {
           if (isCompressor || tool.slug.includes('scrub')) {
             doc.setTitle('');
@@ -742,6 +785,33 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
             </div>
           </div>
 
+          {(tool.slug.includes('metadata-editor') || tool.slug.includes('header-footer')) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
+                  {tool.slug.includes('header-footer') ? 'Header Text' : 'Document Title'}
+                </label>
+                <input
+                  type="text"
+                  value={metaTitle}
+                  onChange={(e) => setMetaTitle(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
+                  {tool.slug.includes('header-footer') ? 'Footer Text' : 'Author Name'}
+                </label>
+                <input
+                  type="text"
+                  value={metaAuthor}
+                  onChange={(e) => setMetaAuthor(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
+                />
+              </div>
+            </div>
+          )}
+
           {files.length > 0 && (
             <div className="flex flex-wrap gap-2 text-xs">
               {files.map((f, i) => (
@@ -865,6 +935,33 @@ export default function PdfEngine({ tool }: { tool: ToolDef }) {
                 <option value={180}>180° Upside Down</option>
                 <option value={270}>270° Counter-Clockwise</option>
               </select>
+            </div>
+          )}
+
+          {(tool.slug.includes('metadata-editor') || tool.slug.includes('header-footer')) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
+                  {tool.slug.includes('header-footer') ? 'Header Text' : 'Document Title'}
+                </label>
+                <input
+                  type="text"
+                  value={metaTitle}
+                  onChange={(e) => setMetaTitle(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
+                  {tool.slug.includes('header-footer') ? 'Footer Text' : 'Author Name'}
+                </label>
+                <input
+                  type="text"
+                  value={metaAuthor}
+                  onChange={(e) => setMetaAuthor(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
+                />
+              </div>
             </div>
           )}
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ToolDef } from '@/data/toolsRegistry';
-import { Upload, Download, RefreshCw, Palette, Type, Sliders, CheckCircle2 } from 'lucide-react';
+import { Upload, Download, Sliders } from 'lucide-react';
 
 export default function ImageEngine({ tool }: { tool: ToolDef }) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -10,7 +10,13 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
   const [targetWidth, setTargetWidth] = useState<number>(800);
   const [targetHeight, setTargetHeight] = useState<number>(600);
   const [quality, setQuality] = useState<number>(85);
-  const [filterType, setFilterType] = useState<string>('none');
+  const [rotateDeg, setRotateDeg] = useState<number>(0);
+  const [flipH, setFlipH] = useState<boolean>(false);
+  const [brightness, setBrightness] = useState<number>(100);
+  const [contrast, setContrast] = useState<number>(100);
+  const [saturation, setSaturation] = useState<number>(100);
+  const [blurPx, setBlurPx] = useState<number>(tool.slug.includes('blur') ? 10 : 0);
+  const [borderPx, setBorderPx] = useState<number>(tool.slug.includes('border') ? 32 : 0);
   const [watermark, setWatermark] = useState<string>('SnapTools');
   const [topMemeText, setTopMemeText] = useState<string>('WHEN THE CODE');
   const [bottomMemeText, setBottomMemeText] = useState<string>('WORKS FIRST TRY');
@@ -26,8 +32,7 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
       setFileName(file.name);
       const reader = new FileReader();
       reader.onload = (event) => {
-        const result = event.target?.result as string;
-        setImageSrc(result);
+        setImageSrc(event.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -44,7 +49,6 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Handle specific sizes like Passport / Visa / Resizing
       let w = img.width;
       let h = img.height;
 
@@ -54,82 +58,89 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
       } else if (tool.slug.includes('visa')) {
         w = 600;
         h = 600;
-      } else if (tool.slug.includes('avatar') || tool.slug.includes('square')) {
+      } else if (tool.slug.includes('avatar') || tool.slug.includes('square') || tool.slug.includes('1-1')) {
         const minDim = Math.min(w, h);
         w = minDim;
         h = minDim;
+      } else if (tool.slug.includes('16-9')) {
+        h = Math.round((w * 9) / 16);
       } else if (tool.slug.includes('resiz')) {
         w = targetWidth || img.width;
         h = targetHeight || img.height;
       }
 
-      canvas.width = w;
-      canvas.height = h;
+      const rotated90 = rotateDeg === 90 || rotateDeg === 270;
+      const outW = (rotated90 ? h : w) + borderPx * 2;
+      const outH = (rotated90 ? w : h) + borderPx * 2;
+      canvas.width = outW;
+      canvas.height = outH;
 
-      // Draw background if circular avatar
-      ctx.clearRect(0, 0, w, h);
+      ctx.clearRect(0, 0, outW, outH);
+      if (borderPx > 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, outW, outH);
+      }
+
+      ctx.save();
+      ctx.translate(outW / 2, outH / 2);
+      ctx.rotate((rotateDeg * Math.PI) / 180);
+      ctx.scale(flipH ? -1 : 1, 1);
+
       if (tool.slug.includes('avatar') || tool.slug.includes('round')) {
-        ctx.save();
         ctx.beginPath();
-        ctx.arc(w / 2, h / 2, Math.min(w, h) / 2, 0, Math.PI * 2);
+        ctx.arc(0, 0, Math.min(w, h) / 2, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
       }
 
-      // Draw image
-      ctx.drawImage(img, 0, 0, w, h);
+      const filters: string[] = [];
+      if (brightness !== 100) filters.push(`brightness(${brightness}%)`);
+      if (contrast !== 100) filters.push(`contrast(${contrast}%)`);
+      if (saturation !== 100) filters.push(`saturate(${saturation}%)`);
+      if (blurPx > 0) filters.push(`blur(${blurPx}px)`);
+      if (tool.slug.includes('grayscale') || tool.slug.includes('black-white')) filters.push('grayscale(100%)');
+      if (tool.slug.includes('sepia')) filters.push('sepia(100%)');
+      ctx.filter = filters.length > 0 ? filters.join(' ') : 'none';
 
-      if (tool.slug.includes('avatar') || tool.slug.includes('round')) {
-        ctx.restore();
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.restore();
+      ctx.filter = 'none';
+
+      if (tool.slug.includes('pixelate')) {
+        const block = 12;
+        const smallCanvas = document.createElement('canvas');
+        smallCanvas.width = Math.max(4, Math.floor(outW / block));
+        smallCanvas.height = Math.max(4, Math.floor(outH / block));
+        const sCtx = smallCanvas.getContext('2d');
+        if (sCtx) {
+          sCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(smallCanvas, 0, 0, smallCanvas.width, smallCanvas.height, 0, 0, outW, outH);
+          ctx.imageSmoothingEnabled = true;
+        }
       }
 
-      // Filters
-      if (tool.slug.includes('grayscale') || tool.slug.includes('black-white') || filterType === 'grayscale') {
-        const imgData = ctx.getImageData(0, 0, w, h);
-        const d = imgData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-          d[i] = v;
-          d[i + 1] = v;
-          d[i + 2] = v;
-        }
-        ctx.putImageData(imgData, 0, 0);
-      } else if (tool.slug.includes('sepia') || filterType === 'sepia') {
-        const imgData = ctx.getImageData(0, 0, w, h);
-        const d = imgData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const r = d[i], g = d[i + 1], b = d[i + 2];
-          d[i] = Math.min(255, 0.393 * r + 0.769 * g + 0.189 * b);
-          d[i + 1] = Math.min(255, 0.349 * r + 0.686 * g + 0.168 * b);
-          d[i + 2] = Math.min(255, 0.272 * r + 0.534 * g + 0.131 * b);
-        }
-        ctx.putImageData(imgData, 0, 0);
-      }
-
-      // Watermark
       if (tool.slug.includes('watermark')) {
         ctx.font = 'bold 36px sans-serif';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
         ctx.lineWidth = 2;
-        ctx.strokeText(watermark, 30, h - 40);
-        ctx.fillText(watermark, 30, h - 40);
+        ctx.strokeText(watermark, 30, outH - 40);
+        ctx.fillText(watermark, 30, outH - 40);
       }
 
-      // Meme Generator
       if (tool.slug.includes('meme')) {
         ctx.font = 'bold 44px Impact, sans-serif';
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 4;
         ctx.textAlign = 'center';
-        ctx.strokeText(topMemeText, w / 2, 60);
-        ctx.fillText(topMemeText, w / 2, 60);
-        ctx.strokeText(bottomMemeText, w / 2, h - 30);
-        ctx.fillText(bottomMemeText, w / 2, h - 30);
+        ctx.strokeText(topMemeText, outW / 2, 60);
+        ctx.fillText(topMemeText, outW / 2, 60);
+        ctx.strokeText(bottomMemeText, outW / 2, outH - 30);
+        ctx.fillText(bottomMemeText, outW / 2, outH - 30);
       }
 
-      // ASCII generation if requested
       if (tool.slug.includes('ascii')) {
         const asciiCanvas = document.createElement('canvas');
         const aCtx = asciiCanvas.getContext('2d');
@@ -145,9 +156,8 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
           for (let y = 0; y < aH; y++) {
             for (let x = 0; x < aW; x++) {
               const idx = (y * aW + x) * 4;
-              const brightness = (aData[idx] + aData[idx + 1] + aData[idx + 2]) / 3;
-              const charIdx = Math.floor((brightness / 255) * (chars.length - 1));
-              str += chars[charIdx];
+              const bright = (aData[idx] + aData[idx + 1] + aData[idx + 2]) / 3;
+              str += chars[Math.floor((bright / 255) * (chars.length - 1))];
             }
             str += '\n';
           }
@@ -155,15 +165,29 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
         }
       }
 
-      // Output format and quality
       let mime = 'image/png';
       if (tool.slug.includes('jpg') || tool.slug.includes('jpeg')) mime = 'image/jpeg';
       else if (tool.slug.includes('webp')) mime = 'image/webp';
 
-      const dataUrl = canvas.toDataURL(mime, quality / 100);
-      setProcessedUrl(dataUrl);
+      setProcessedUrl(canvas.toDataURL(mime, quality / 100));
     };
-  }, [imageSrc, targetWidth, targetHeight, quality, filterType, watermark, topMemeText, bottomMemeText, tool.slug]);
+  }, [
+    imageSrc,
+    targetWidth,
+    targetHeight,
+    quality,
+    rotateDeg,
+    flipH,
+    brightness,
+    contrast,
+    saturation,
+    blurPx,
+    borderPx,
+    watermark,
+    topMemeText,
+    bottomMemeText,
+    tool.slug,
+  ]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -180,7 +204,6 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
 
   return (
     <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
-      {/* Upload Zone */}
       <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl hover:border-blue-500 hover:bg-blue-50/20 dark:hover:bg-blue-950/20 cursor-pointer transition text-center group">
         <Upload className="w-10 h-10 text-neutral-400 group-hover:text-blue-500 mb-2 transition" />
         <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
@@ -190,15 +213,12 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
         <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
       </label>
 
-      {/* Dynamic Settings */}
       {imageSrc && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
           {tool.slug.includes('resiz') && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                  Width (px)
-                </label>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Width (px)</label>
                 <input
                   type="number"
                   value={targetWidth}
@@ -207,9 +227,7 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                  Height (px)
-                </label>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Height (px)</label>
                 <input
                   type="number"
                   value={targetHeight}
@@ -220,27 +238,76 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
             </>
           )}
 
+          {(tool.slug.includes('rotat') || tool.slug.includes('flip')) && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Rotation</label>
+                <select
+                  value={rotateDeg}
+                  onChange={(e) => setRotateDeg(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-xs"
+                >
+                  <option value={0}>0° (Original)</option>
+                  <option value={90}>90° Clockwise</option>
+                  <option value={180}>180° Upside Down</option>
+                  <option value={270}>270° Counter-Clockwise</option>
+                </select>
+              </div>
+              <div className="flex items-end pb-1">
+                <button
+                  type="button"
+                  onClick={() => setFlipH(!flipH)}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold border transition ${
+                    flipH ? 'bg-blue-600 text-white border-blue-600' : 'bg-neutral-100 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700'
+                  }`}
+                >
+                  Flip Horizontal: {flipH ? 'ON' : 'OFF'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {(tool.slug.includes('brightness') || tool.slug.includes('contrast') || tool.slug.includes('saturation')) && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Brightness: {brightness}%</label>
+                <input type="range" min={20} max={200} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Contrast: {contrast}%</label>
+                <input type="range" min={20} max={200} value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Saturation: {saturation}%</label>
+                <input type="range" min={0} max={200} value={saturation} onChange={(e) => setSaturation(Number(e.target.value))} className="w-full" />
+              </div>
+            </>
+          )}
+
+          {tool.slug.includes('blur') && (
+            <div>
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Blur Radius: {blurPx}px</label>
+              <input type="range" min={0} max={30} value={blurPx} onChange={(e) => setBlurPx(Number(e.target.value))} className="w-full" />
+            </div>
+          )}
+
+          {tool.slug.includes('border') && (
+            <div>
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">White Border: {borderPx}px</label>
+              <input type="range" min={0} max={100} value={borderPx} onChange={(e) => setBorderPx(Number(e.target.value))} className="w-full" />
+            </div>
+          )}
+
           {tool.slug.includes('compress') && (
             <div>
-              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                Quality: {quality}%
-              </label>
-              <input
-                type="range"
-                min={10}
-                max={100}
-                value={quality}
-                onChange={(e) => setQuality(Number(e.target.value))}
-                className="w-full"
-              />
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Quality: {quality}%</label>
+              <input type="range" min={10} max={100} value={quality} onChange={(e) => setQuality(Number(e.target.value))} className="w-full" />
             </div>
           )}
 
           {tool.slug.includes('watermark') && (
             <div className="col-span-full">
-              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                Watermark Text
-              </label>
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Watermark Text</label>
               <input
                 type="text"
                 value={watermark}
@@ -253,9 +320,7 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
           {tool.slug.includes('meme') && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                  Top Text
-                </label>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Top Text</label>
                 <input
                   type="text"
                   value={topMemeText}
@@ -264,9 +329,7 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                  Bottom Text
-                </label>
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Bottom Text</label>
                 <input
                   type="text"
                   value={bottomMemeText}
@@ -277,20 +340,16 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
             </>
           )}
 
-          {tool.slug.includes('eyedropper') || tool.slug.includes('palette') ? (
+          {(tool.slug.includes('eyedropper') || tool.slug.includes('palette')) && (
             <div className="col-span-full flex items-center gap-3 p-3 rounded-xl bg-neutral-100 dark:bg-neutral-800">
-              <div
-                className="w-8 h-8 rounded-lg border border-neutral-300 shadow-sm"
-                style={{ backgroundColor: pickedColor }}
-              />
+              <div className="w-8 h-8 rounded-lg border border-neutral-300 shadow-sm" style={{ backgroundColor: pickedColor }} />
               <span className="text-xs font-mono font-semibold">{pickedColor}</span>
               <span className="text-xs text-neutral-500">(Click anywhere on the preview to sample colors)</span>
             </div>
-          ) : null}
+          )}
         </div>
       )}
 
-      {/* Live Preview Canvas */}
       <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 min-h-[220px]">
         {imageSrc ? (
           <div className="relative max-w-full overflow-auto">
@@ -306,7 +365,6 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
           </div>
         )}
 
-        {/* ASCII Art display */}
         {asciiArt && (
           <pre className="mt-4 p-3 bg-neutral-900 text-emerald-400 font-mono text-[8px] leading-tight overflow-x-auto rounded-lg max-h-60 w-full">
             {asciiArt}
@@ -314,7 +372,15 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
         )}
       </div>
 
-      {/* Actions */}
+      {tool.slug.includes('base64') && processedUrl && (
+        <textarea
+          readOnly
+          rows={4}
+          value={processedUrl}
+          className="w-full p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-[11px] font-mono"
+        />
+      )}
+
       {processedUrl && (
         <div className="flex items-center gap-4">
           <a
