@@ -69,6 +69,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const adsenseId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+
   return (
     <html
       lang="en"
@@ -80,23 +82,37 @@ export default function RootLayout({
           name="google-site-verification"
           content="google562716ed7142a0a3"
         />
-        {/* Google AdSense Site Verification & Script */}
-        <meta
-          name="google-adsense-account"
-          content={process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-XXXXXXXXXXXXXXXX'}
-        />
-        <Script
+        {/* Adsterra Popunder Ad Script */}
+        <script
           async
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-XXXXXXXXXXXXXXXX'}`}
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
+          data-cfasync="false"
+          src="https://abscloud.org/1/ebc859b77afbd48754a613c6f1528b9f"
         />
+        {/* Google AdSense Site Verification & Script (Active when ID is configured) */}
+        {adsenseId && (
+          <>
+            <meta name="google-adsense-account" content={adsenseId} />
+            <Script
+              async
+              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseId}`}
+              crossOrigin="anonymous"
+              strategy="afterInteractive"
+            />
+          </>
+        )}
       </head>
       <body className="min-h-full flex flex-col bg-neutral-50/60 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 selection:bg-blue-600 selection:text-white">
         <Header />
         <main className="flex-1 w-full">{children}</main>
         <Footer />
         <CookieConsent />
+        {/* Adsterra Social Bar Ad Script */}
+        <Script
+          id="adsterra-social-bar"
+          data-cfasync="false"
+          src="https://bauval.org/14/d25d3e7f69b44b9fbe615d122d2792e1"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
