@@ -50,7 +50,7 @@ SnapTools operates under a strict **Zero-Data-Retention** policy:
 - **Framework:** Next.js (App Router, Turbopack, React 19)
 - **Styling:** Tailwind CSS, Lucide Icons
 - **Deployment:** Vercel Global Edge Network
-- **Architecture:** 100% Static Site Generation (SSG) for all 25,694+ tool routes and 20 category hubs.
+- **Architecture:** Hybrid Static Generation — Top 10,000 tools pre-rendered via SSG (`generateStaticParams`) + 15,694 permanently cached on-demand routes (`revalidate = false`) across all 25,694 tools and 20 category hubs.
 
 ---
 

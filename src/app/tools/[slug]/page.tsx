@@ -24,8 +24,22 @@ interface ToolPageProps {
   params: Promise<{ slug: string }>;
 }
 
+export const dynamicParams = true;
+export const revalidate = false;
+
 export async function generateStaticParams() {
-  return TOOLS_REGISTRY.map((t) => ({
+  const TARGET_PREBUILD = 10000;
+  if (TOOLS_REGISTRY.length <= TARGET_PREBUILD) {
+    return TOOLS_REGISTRY.map((t) => ({ slug: t.slug }));
+  }
+  const selected = TOOLS_REGISTRY.slice(0, 5264);
+  const rest = TOOLS_REGISTRY.slice(5264);
+  const remainingSlots = TARGET_PREBUILD - selected.length;
+  const step = rest.length / remainingSlots;
+  for (let i = 0; i < remainingSlots; i++) {
+    selected.push(rest[Math.floor(i * step)]);
+  }
+  return selected.map((t) => ({
     slug: t.slug,
   }));
 }
