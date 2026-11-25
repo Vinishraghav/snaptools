@@ -28,6 +28,7 @@ export default function ToolHost({ tool }: { tool: ToolDef }) {
       // Check favorite
       const favs: string[] = JSON.parse(localStorage.getItem('omnitools_favorites') || '[]');
       setIsFavorite(favs.includes(tool.slug));
+      window.dispatchEvent(new Event('snaptools-storage-update'));
     } catch {
       // ignore
     }
@@ -45,6 +46,7 @@ export default function ToolHost({ tool }: { tool: ToolDef }) {
         setIsFavorite(true);
       }
       localStorage.setItem('omnitools_favorites', JSON.stringify(updated));
+      window.dispatchEvent(new Event('snaptools-storage-update'));
     } catch {
       // ignore
     }

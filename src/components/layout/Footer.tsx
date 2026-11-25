@@ -70,6 +70,18 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
+            <Link href="/studio/invoice" className="hover:text-neutral-900 dark:hover:text-white transition font-medium">
+              Invoice Maker
+            </Link>
+            <Link href="/studio/signature" className="hover:text-neutral-900 dark:hover:text-white transition font-medium">
+              Signature Pad
+            </Link>
+            <Link href="/studio/resume" className="hover:text-neutral-900 dark:hover:text-white transition font-medium">
+              Resume Builder
+            </Link>
+            <Link href="/directory" className="hover:text-neutral-900 dark:hover:text-white transition font-medium">
+              A&ndash;Z Directory
+            </Link>
             <Link href="/arcade" className="text-amber-600 dark:text-amber-400 hover:underline font-semibold transition">
               Mini-Arcade
             </Link>

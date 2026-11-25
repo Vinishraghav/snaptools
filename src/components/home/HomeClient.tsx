@@ -14,6 +14,10 @@ import {
   TrendingUp,
   Gamepad2,
   Dices,
+  FileText,
+  PenTool,
+  FileCheck2,
+  BookOpen,
 } from 'lucide-react';
 import { TOTAL_TOOLS_LABEL, SYNCED_CATEGORIES } from '@/data/catalogMeta';
 import { CORE_TOOLS_LIST, loadFullToolsIndex, SearchToolItem } from '@/data/clientCatalog';
@@ -179,6 +183,110 @@ export default function HomeClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <AdSlot slotId="home-leaderboard" format="horizontal" />
       </div>
+
+      {/* Interactive Document & Utility Studios */}
+      {!searchQuery && selectedCategory === 'all' && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-5">
+            <div>
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+                Pro Interactive Workspaces &amp; Studios
+              </h2>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Multi-step document builders &amp; complete A&ndash;Z catalog explorer running 100% inside your browser.
+              </p>
+            </div>
+            <Link
+              href="/directory"
+              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+              Browse Full A&ndash;Z Directory <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Link
+              href="/studio/invoice"
+              className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-blue-500 hover:shadow-lg transition group flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white group-hover:text-blue-600 transition">
+                  GST Invoice PDF Studio
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  Generate A4 business invoices with CGST/SGST splits, custom logos &amp; instant PDF export.
+                </p>
+              </div>
+              <div className="mt-4 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                Open Studio <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+              </div>
+            </Link>
+
+            <Link
+              href="/studio/signature"
+              className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-purple-500 hover:shadow-lg transition group flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3">
+                  <PenTool className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white group-hover:text-purple-600 transition">
+                  Signature &amp; PDF Signer
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  Draw or type smooth signatures, save transparent PNGs, or stamp directly onto any PDF.
+                </p>
+              </div>
+              <div className="mt-4 text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                Open Studio <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+              </div>
+            </Link>
+
+            <Link
+              href="/studio/resume"
+              className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-emerald-500 hover:shadow-lg transition group flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+                  <FileCheck2 className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white group-hover:text-emerald-600 transition">
+                  ATS Resume PDF Builder
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  Build clean single-column resumes with live A4 paper preview &amp; 1-click PDF download.
+                </p>
+              </div>
+              <div className="mt-4 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                Open Studio <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+              </div>
+            </Link>
+
+            <Link
+              href="/directory"
+              className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-indigo-500 hover:shadow-lg transition group flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white group-hover:text-indigo-600 transition">
+                  A&ndash;Z Complete Directory
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  Filter all {TOTAL_TOOLS_LABEL} utilities instantaneously by alphabet, category, or keyword.
+                </p>
+              </div>
+              <div className="mt-4 text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                Explore Index <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+              </div>
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Recently Used (if any) */}
       {recentTools.length > 0 && !searchQuery && (
