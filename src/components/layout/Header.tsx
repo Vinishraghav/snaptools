@@ -15,33 +15,38 @@ import {
   Heart,
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
-import { TOOLS_REGISTRY, ToolDef, TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
-import { CATEGORIES } from '@/data/categories';
+import { SYNCED_CATEGORIES, TOTAL_TOOLS_LABEL } from '@/data/catalogMeta';
+import { CORE_TOOLS_LIST, loadFullToolsIndex, SearchToolItem } from '@/data/clientCatalog';
 
 export default function Header() {
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<ToolDef[]>([]);
-  const [recentTools, setRecentTools] = useState<ToolDef[]>([]);
+  const [catalog, setCatalog] = useState<SearchToolItem[]>(CORE_TOOLS_LIST);
+  const [searchResults, setSearchResults] = useState<SearchToolItem[]>([]);
+  const [recentTools, setRecentTools] = useState<SearchToolItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [catMenuOpen, setCatMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Load recent & favorites from localStorage
-    try {
-      const recents: string[] = JSON.parse(localStorage.getItem('omnitools_recents') || '[]');
-      const favs: string[] = JSON.parse(localStorage.getItem('omnitools_favorites') || '[]');
-      setFavorites(favs);
-      const recentDefs = recents
-        .map((slug) => TOOLS_REGISTRY.find((t) => t.slug === slug))
-        .filter((t): t is ToolDef => Boolean(t))
-        .slice(0, 5);
-      setRecentTools(recentDefs);
-    } catch {
-      // fallback
-    }
+    // Load favorites and hydrate recents cleanly
+    const loadRecents = (items: SearchToolItem[]) => {
+      try {
+        const recents: string[] = JSON.parse(localStorage.getItem('omnitools_recents') || '[]');
+        const favs: string[] = JSON.parse(localStorage.getItem('omnitools_favorites') || '[]');
+        setFavorites(favs);
+        const bySlug = new Map(items.map((t) => [t.slug, t]));
+        const recentDefs = recents
+          .map((slug) => bySlug.get(slug))
+          .filter((t): t is SearchToolItem => Boolean(t))
+          .slice(0, 5);
+        setRecentTools(recentDefs);
+      } catch {
+        // fallback
+      }
+    };
+    loadRecents(CORE_TOOLS_LIST);
 
     // Keyboard shortcut: Ctrl+K or Cmd+K
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -58,8 +63,24 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      setTimeout(() => searchInputRef.current?.focus(), 50);
+    if (searchOpen) {
+      loadFullToolsIndex().then((all) => {
+        setCatalog(all);
+        try {
+          const recents: string[] = JSON.parse(localStorage.getItem('omnitools_recents') || '[]');
+          const bySlug = new Map(all.map((t) => [t.slug, t]));
+          const recentDefs = recents
+            .map((slug) => bySlug.get(slug))
+            .filter((t): t is SearchToolItem => Boolean(t))
+            .slice(0, 5);
+          setRecentTools(recentDefs);
+        } catch {
+          // fallback
+        }
+      });
+      if (searchInputRef.current) {
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
     }
   }, [searchOpen]);
 
@@ -69,15 +90,16 @@ export default function Header() {
       return;
     }
     const q = searchQuery.toLowerCase().trim();
-    const hits = TOOLS_REGISTRY.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.categoryName.toLowerCase().includes(q) ||
-        t.keywords.some((k) => k.toLowerCase().includes(q)) ||
-        t.description.toLowerCase().includes(q)
-    ).slice(0, 8);
+    const hits = catalog
+      .filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.categoryName.toLowerCase().includes(q) ||
+          t.slug.toLowerCase().includes(q)
+      )
+      .slice(0, 8);
     setSearchResults(hits);
-  }, [searchQuery]);
+  }, [searchQuery, catalog]);
 
   const selectTool = (slug: string) => {
     setSearchOpen(false);
@@ -125,7 +147,7 @@ export default function Header() {
                   <div className="px-3 py-2 font-semibold text-neutral-400 uppercase text-[10px] tracking-wider">
                     20 Tool Categories
                   </div>
-                  {CATEGORIES.map((cat) => (
+                  {SYNCED_CATEGORIES.map((cat) => (
                     <Link
                       key={cat.slug}
                       href={`/category/${cat.slug}`}
@@ -217,7 +239,7 @@ export default function Header() {
                           {tool.title}
                         </div>
                         <div className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 mt-0.5">
-                          {tool.description}
+                          Free client-side {tool.categoryName} utility &bull; Tool #{tool.id}
                         </div>
                       </div>
                       <span className="text-[10px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-medium shrink-0">
@@ -272,7 +294,7 @@ export default function Header() {
                         'bmi-body-mass-index-calculator',
                         'exact-age-calculator-years-months-days-seconds'
                       ].map((slug) => {
-                        const tool = TOOLS_REGISTRY.find((t) => t.slug === slug);
+                        const tool = catalog.find((t) => t.slug === slug);
                         if (!tool) return null;
                         return (
                           <button

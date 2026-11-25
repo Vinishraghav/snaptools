@@ -28,6 +28,14 @@ function getDefaultInputs(tool: ToolDef): CalculatorDefaults {
   }
   if (slug.includes('margin') || slug.includes('markup') || slug.includes('profit')) return { v1: 500, v2: 750, v3: 1 };
   if (slug.includes('percentage')) return { v1: 45, v2: 100, v3: 1 };
+  if (slug.includes('salary') || slug.includes('ctc')) return { v1: 1200000, v2: 12, v3: 0 };
+  if (slug.includes('gratuity')) return { v1: 50000, v2: 6, v3: 1 };
+  if (slug.includes('fuel') || slug.includes('mileage')) return { v1: 350, v2: 18, v3: 102 };
+  if (slug.includes('electricity') || slug.includes('power-bill')) return { v1: 1500, v2: 8, v3: 7.5 };
+  if (slug.includes('tip') || slug.includes('split')) return { v1: 1200, v2: 10, v3: 4 };
+  if (slug.includes('water')) return { v1: 70, v2: 30, v3: 1 };
+  if (slug.includes('protein')) return { v1: 70, v2: 1.6, v3: 3 };
+  if (slug.includes('heart-rate')) return { v1: 28, v2: 70, v3: 1 };
   return { v1: 100, v2: 10, v3: 5 };
 }
 
@@ -63,6 +71,14 @@ function detectFormula(tool: ToolDef): string {
   if (slug.includes('age') || slug.includes('date-difference') || slug.includes('birthday')) return 'date';
   if (slug.includes('margin') || slug.includes('markup') || slug.includes('profit')) return 'profit';
   if (slug.includes('percentage')) return 'percentage';
+  if (slug.includes('salary') || slug.includes('ctc')) return 'salary-ctc';
+  if (slug.includes('gratuity')) return 'gratuity';
+  if (slug.includes('fuel')) return 'fuel-cost';
+  if (slug.includes('electricity')) return 'electricity-bill';
+  if (slug.includes('tip')) return 'tip-split';
+  if (slug.includes('water')) return 'water-intake';
+  if (slug.includes('protein')) return 'protein-intake';
+  if (slug.includes('heart-rate')) return 'heart-rate';
   return 'general';
 }
 
@@ -402,6 +418,138 @@ export default function CalculatorEngine({ tool }: { tool: ToolDef }) {
         res.push({ label: 'Equivalent Percentage', value: `${Math.min(100, pct).toFixed(2)}%`, highlight: true });
         break;
       }
+      case 'salary-ctc': {
+        const ctc = Math.max(0, a);
+        const pfPct = Math.max(0, b) / 100;
+        const basic = ctc * 0.5;
+        const epfAnnual = basic * pfPct;
+        const taxable = Math.max(0, ctc - 75000 - epfAnnual * 0.5);
+        let tax = 0;
+        if (taxable > 1200000) {
+          const brackets: [number, number][] = [
+            [400000, 0], [400000, 0.05], [400000, 0.1], [400000, 0.15], [400000, 0.2], [400000, 0.25], [Infinity, 0.3],
+          ];
+          let rem = taxable;
+          for (const [span, rate] of brackets) {
+            const chunk = Math.min(rem, span);
+            tax += chunk * rate;
+            rem -= chunk;
+            if (rem <= 0) break;
+          }
+          tax *= 1.04;
+        }
+        const netAnnual = Math.max(0, ctc - epfAnnual - tax);
+        res.push({ label: 'Est. Monthly In-Hand', value: `₹${Math.round(netAnnual / 12).toLocaleString('en-IN')}`, highlight: true });
+        res.push({ label: 'Annual Net Take-Home', value: `₹${Math.round(netAnnual).toLocaleString('en-IN')}` });
+        res.push({ label: 'Est. Tax + EPF/Yr', value: `₹${Math.round(tax + epfAnnual).toLocaleString('en-IN')}` });
+        break;
+      }
+      case 'fd-quarterly': {
+        const mat = a * Math.pow(1 + b / 400, 4 * c);
+        res.push({ label: 'FD Maturity Value', value: `₹${Math.round(mat).toLocaleString('en-IN')}`, highlight: true });
+        res.push({ label: 'Total Interest Earned', value: `₹${Math.round(mat - a).toLocaleString('en-IN')}` });
+        res.push({ label: 'Principal Deposited', value: `₹${Math.round(a).toLocaleString('en-IN')}` });
+        break;
+      }
+      case 'rd': {
+        const months = Math.max(1, Math.round(c * 12));
+        const rQ = b / 400;
+        let mat = 0;
+        for (let m = 0; m < months; m++) {
+          mat += a * Math.pow(1 + rQ, (4 * (months - m)) / 12);
+        }
+        const inv = a * months;
+        res.push({ label: 'RD Maturity Value', value: `₹${Math.round(mat).toLocaleString('en-IN')}`, highlight: true });
+        res.push({ label: 'Total Invested', value: `₹${Math.round(inv).toLocaleString('en-IN')}` });
+        res.push({ label: 'Interest Earned', value: `₹${Math.round(mat - inv).toLocaleString('en-IN')}` });
+        break;
+      }
+      case 'ppf': {
+        const yrs = Math.max(1, Math.round(c));
+        const r = b / 100;
+        let bal = 0;
+        for (let y = 0; y < yrs; y++) {
+          bal = (bal + a) * (1 + r);
+        }
+        const inv = a * yrs;
+        res.push({ label: 'PPF Tax-Free Maturity', value: `₹${Math.round(bal).toLocaleString('en-IN')}`, highlight: true });
+        res.push({ label: 'Total Deposited', value: `₹${Math.round(inv).toLocaleString('en-IN')}` });
+        res.push({ label: 'Tax-Free Interest', value: `₹${Math.round(bal - inv).toLocaleString('en-IN')}` });
+        break;
+      }
+      case 'gratuity': {
+        const grat = (15 * a * Math.max(0, b)) / 26;
+        res.push({ label: 'Estimated Gratuity', value: `₹${Math.round(grat).toLocaleString('en-IN')}`, highlight: true });
+        res.push({ label: 'Eligible Status (≥5 Yrs)', value: b >= 5 ? 'Eligible' : 'Need 5+ Years Service' });
+        break;
+      }
+      case 'hourly-wage': {
+        const wks = Math.max(1, c);
+        const wkPay = a * b;
+        const yrPay = wkPay * wks;
+        res.push({ label: 'Annual Gross Pay', value: `${Math.round(yrPay).toLocaleString()}`, highlight: true });
+        res.push({ label: 'Monthly Average', value: `${Math.round(yrPay / 12).toLocaleString()}` });
+        res.push({ label: 'Weekly Earnings', value: `${Math.round(wkPay).toLocaleString()}` });
+        break;
+      }
+      case 'tip-split': {
+        const people = Math.max(1, Math.round(c));
+        const tipAmt = (a * b) / 100;
+        const total = a + tipAmt;
+        res.push({ label: 'Per Person Share', value: `₹${(total / people).toFixed(2)}`, highlight: true });
+        res.push({ label: `Tip Amount (${b}%)`, value: `₹${tipAmt.toFixed(2)}` });
+        res.push({ label: 'Grand Total Bill', value: `₹${total.toFixed(2)}` });
+        break;
+      }
+      case 'fuel-cost': {
+        const mil = Math.max(0.1, b);
+        const liters = a / mil;
+        const cost = liters * c;
+        res.push({ label: 'Total Trip Fuel Cost', value: `₹${cost.toFixed(2)}`, highlight: true });
+        res.push({ label: 'Fuel Required', value: `${liters.toFixed(2)} Liters` });
+        res.push({ label: 'Cost Per Km', value: `₹${(a > 0 ? cost / a : 0).toFixed(2)} / km` });
+        break;
+      }
+      case 'electricity-bill': {
+        const dailyUnits = (a * b) / 1000;
+        const monthlyUnits = dailyUnits * 30;
+        const bill = monthlyUnits * c;
+        res.push({ label: 'Est. Monthly Bill (30d)', value: `₹${bill.toFixed(2)}`, highlight: true });
+        res.push({ label: 'Monthly Consumption', value: `${monthlyUnits.toFixed(1)} kWh (Units)` });
+        res.push({ label: 'Daily Consumption', value: `${dailyUnits.toFixed(2)} kWh/day` });
+        break;
+      }
+      case 'water-intake': {
+        const liters = a * 0.033 + (Math.max(0, b) / 30) * 0.35;
+        res.push({ label: 'Daily Water Target', value: `${liters.toFixed(2)} Liters/day`, highlight: true });
+        res.push({ label: '250 mL Glasses/Day', value: `${Math.ceil((liters * 1000) / 250)} Glasses` });
+        res.push({ label: 'Fluid Ounces (oz)', value: `${(liters * 33.814).toFixed(0)} oz/day` });
+        break;
+      }
+      case 'protein-intake': {
+        const grams = a * b;
+        res.push({ label: 'Daily Protein Target', value: `${Math.round(grams)} g/day`, highlight: true });
+        res.push({ label: 'Per Meal (3 Meals)', value: `${Math.round(grams / 3)} g / meal` });
+        res.push({ label: 'Protein Calories', value: `${Math.round(grams * 4)} kcal` });
+        break;
+      }
+      case 'heart-rate': {
+        const maxHr = Math.max(100, 220 - a);
+        const resHr = Math.max(40, Math.min(maxHr - 20, b));
+        const hrr = maxHr - resHr;
+        res.push({ label: 'Max Heart Rate', value: `${maxHr} BPM`, highlight: true });
+        res.push({ label: 'Fat Burn Zone (60-70%)', value: `${Math.round(resHr + hrr * 0.6)}–${Math.round(resHr + hrr * 0.7)} BPM` });
+        res.push({ label: 'Cardio Peak Zone (70-85%)', value: `${Math.round(resHr + hrr * 0.7)}–${Math.round(resHr + hrr * 0.85)} BPM` });
+        break;
+      }
+      case 'what-percent-is': {
+        const pct = b !== 0 ? (a / b) * 100 : 0;
+        const grade = pct >= 75 ? 'Distinction' : pct >= 60 ? 'First Class' : pct >= 35 ? 'Pass' : 'Below Pass';
+        res.push({ label: 'Score Percentage', value: `${pct.toFixed(2)}%`, highlight: true });
+        res.push({ label: 'Result Division', value: grade });
+        res.push({ label: 'Marks Ratio', value: `${a} / ${b}` });
+        break;
+      }
       default: {
         res.push({ label: 'Product (A × B)', value: (a * b).toLocaleString(), highlight: true });
         res.push({ label: 'Sum (A + B + C)', value: (a + b + c).toLocaleString() });
@@ -446,6 +594,19 @@ export default function CalculatorEngine({ tool }: { tool: ToolDef }) {
       case 'tile': return ['Room Length (ft)', 'Room Width (ft)', 'Tile Area (sq ft)'];
       case 'paint': return ['Wall Width (ft)', 'Wall Height (ft)', 'Number of Coats'];
       case 'cgpa': return ['Your CGPA / Score', 'Multiplier (e.g. 9.5)'];
+      case 'salary-ctc': return ['Annual CTC (₹)', 'Employee + Employer PF %', 'Other Annual Deduction (₹)'];
+      case 'fd-quarterly': return ['FD Principal (₹)', 'Annual Interest Rate (%)', 'Tenure (Years)'];
+      case 'rd': return ['Monthly RD Deposit (₹)', 'Annual Interest Rate (%)', 'Tenure (Years)'];
+      case 'ppf': return ['Yearly PPF Deposit (₹)', 'PPF Rate (% p.a.)', 'Investment Years (Min 15)'];
+      case 'gratuity': return ['Monthly Basic + DA (₹)', 'Years of Service'];
+      case 'hourly-wage': return ['Hourly Rate', 'Hours per Week', 'Working Weeks/Year'];
+      case 'tip-split': return ['Total Bill Amount (₹)', 'Tip Percentage (%)', 'Number of People'];
+      case 'fuel-cost': return ['Trip Distance (km)', 'Vehicle Mileage (km/L)', 'Fuel Price (₹/L)'];
+      case 'electricity-bill': return ['Appliance Power (Watts)', 'Usage Hours per Day', 'Rate per Unit (₹/kWh)'];
+      case 'water-intake': return ['Body Weight (kg)', 'Daily Exercise (Minutes)'];
+      case 'protein-intake': return ['Body Weight (kg)', 'Target Ratio (g per kg)', 'Meals per Day'];
+      case 'heart-rate': return ['Age (Years)', 'Resting Heart Rate (BPM)'];
+      case 'what-percent-is': return ['Marks / Value Obtained', 'Total Maximum Marks'];
       default: return ['Input Value A', 'Input Value B', 'Input Value C'];
     }
   };

@@ -1,0 +1,26 @@
+{
+  "totalCount": 25694,
+  "totalLabel": "25,694",
+  "categoryCounts": {
+    "pdf-tools": 308,
+    "image-editing-optimization": 1072,
+    "audio-video-animation": 877,
+    "text-string-manipulation": 195,
+    "developer-code-formatters": 544,
+    "data-csv-spreadsheet": 176,
+    "cryptography-security-networking": 277,
+    "css-ui-design-color": 598,
+    "qr-barcode-generators": 207,
+    "indian-finance-tax-calculators": 7954,
+    "business-ecommerce-accounting": 1208,
+    "seo-content-social-media": 200,
+    "health-fitness-nutrition": 1006,
+    "mathematics-algebra-statistics": 2071,
+    "geometry-physics-engineering": 573,
+    "construction-home-land-measurement": 2386,
+    "unit-measurement-converters": 2908,
+    "education-academic-tools": 691,
+    "date-time-travel-utilities": 1590,
+    "hardware-browser-utilities": 853
+  }
+}

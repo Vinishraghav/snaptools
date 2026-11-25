@@ -326,8 +326,8 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
         <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
       </label>
 
-      {imageSrc && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+      {(targetKb > 0 || tool.slug.includes('compress') || tool.slug.includes('resiz') || typeof tool.spec?.width === 'number') && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800">
           {(tool.slug.includes('resiz') || typeof tool.spec?.width === 'number') && (
             <>
               <div>
@@ -336,7 +336,7 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
                   type="number"
                   value={targetWidth}
                   onChange={(e) => setTargetWidth(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-xs"
+                  className="w-full px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-mono"
                 />
               </div>
               <div>
@@ -345,16 +345,15 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
                   type="number"
                   value={targetHeight}
                   onChange={(e) => setTargetHeight(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-xs"
+                  className="w-full px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-mono"
                 />
               </div>
             </>
           )}
-
           {(targetKb > 0 || tool.slug.includes('compress')) && (
             <div>
               <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                {targetKb > 0 ? `Target Size (KB)` : `Quality: ${quality}%`}
+                {targetKb > 0 ? 'Target File Size (KB)' : `Quality: ${quality}%`}
               </label>
               {targetKb > 0 ? (
                 <input
@@ -363,7 +362,7 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
                   max={5000}
                   value={targetKb}
                   onChange={(e) => setTargetKb(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-xs font-mono"
+                  className="w-full px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-mono"
                 />
               ) : (
                 <input
@@ -377,6 +376,11 @@ export default function ImageEngine({ tool }: { tool: ToolDef }) {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {imageSrc && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
 
           {(tool.slug.includes('rotat') || tool.slug.includes('flip')) && (
             <>

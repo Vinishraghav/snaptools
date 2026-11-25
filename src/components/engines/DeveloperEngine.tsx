@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ToolDef, TOTAL_TOOLS_COUNT } from '@/data/toolsRegistry';
+import type { ToolDef } from '@/data/toolsRegistry';
+import { TOTAL_TOOLS_COUNT } from '@/data/catalogMeta';
 import * as yaml from 'js-yaml';
 import {
   Copy,

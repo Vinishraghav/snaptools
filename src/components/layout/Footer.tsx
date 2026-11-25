@@ -2,8 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
-import { CATEGORIES } from '@/data/categories';
+import { TOTAL_TOOLS_LABEL, SYNCED_CATEGORIES } from '@/data/catalogMeta';
 import { Shield, Zap, Lock, Heart, Coffee } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 
@@ -46,7 +45,7 @@ export default function Footer() {
       {/* Main Categories Link Matrix */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-          {CATEGORIES.map((cat) => (
+          {SYNCED_CATEGORIES.map((cat) => (
             <div key={cat.slug} className="space-y-2">
               <Link
                 href={`/category/${cat.slug}`}

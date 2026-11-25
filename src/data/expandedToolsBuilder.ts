@@ -1,3 +1,5 @@
+import { appendDailyUtilityTools } from './expandedPack25k';
+
 export type ToolEngine =
   | 'pdf'
   | 'image'
@@ -1199,6 +1201,8 @@ export function buildAllTools(baseSeeds: SeedEntry[]): CompactToolSeed[] {
       );
     }
   }
+
+  appendDailyUtilityTools(list, seenSlugs, nextId, addTool);
 
   return list;
 }

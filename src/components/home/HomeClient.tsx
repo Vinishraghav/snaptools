@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -12,14 +12,15 @@ import {
   ChevronRight,
   TrendingUp,
 } from 'lucide-react';
-import { TOOLS_REGISTRY, ToolDef, TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
-import { CATEGORIES } from '@/data/categories';
+import { TOTAL_TOOLS_LABEL, SYNCED_CATEGORIES } from '@/data/catalogMeta';
+import { CORE_TOOLS_LIST, loadFullToolsIndex, SearchToolItem } from '@/data/clientCatalog';
 import AdSlot from '@/components/ads/AdSlot';
 
 export default function HomeClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [recentTools, setRecentTools] = useState<ToolDef[]>([]);
+  const [catalog, setCatalog] = useState<SearchToolItem[]>(CORE_TOOLS_LIST);
+  const [recentTools, setRecentTools] = useState<SearchToolItem[]>([]);
   const [visibleCount, setVisibleCount] = useState<number>(100);
 
   useEffect(() => {
@@ -27,31 +28,45 @@ export default function HomeClient() {
   }, [searchQuery, selectedCategory]);
 
   useEffect(() => {
-    try {
-      const recents: string[] = JSON.parse(localStorage.getItem('omnitools_recents') || '[]');
-      const loaded = recents
-        .map((s) => TOOLS_REGISTRY.find((t) => t.slug === s))
-        .filter((t): t is ToolDef => Boolean(t))
-        .slice(0, 6);
-      setRecentTools(loaded);
-    } catch {
-      // fallback
-    }
+    let active = true;
+    const resolveRecents = (items: SearchToolItem[]) => {
+      try {
+        const recents: string[] = JSON.parse(localStorage.getItem('omnitools_recents') || '[]');
+        const bySlug = new Map(items.map((t) => [t.slug, t]));
+        const loaded = recents
+          .map((s) => bySlug.get(s))
+          .filter((t): t is SearchToolItem => Boolean(t))
+          .slice(0, 6);
+        if (active) setRecentTools(loaded);
+      } catch {
+        // fallback
+      }
+    };
+    resolveRecents(CORE_TOOLS_LIST);
+    loadFullToolsIndex().then((all) => {
+      if (!active) return;
+      setCatalog(all);
+      resolveRecents(all);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Filter tools
-  const filteredTools = TOOLS_REGISTRY.filter((tool) => {
-    const matchesCat = selectedCategory === 'all' || tool.category === selectedCategory;
-    if (!matchesCat) return false;
-    if (!searchQuery.trim()) return true;
+  const filteredTools = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return (
-      tool.title.toLowerCase().includes(q) ||
-      tool.categoryName.toLowerCase().includes(q) ||
-      tool.keywords.some((k) => k.toLowerCase().includes(q)) ||
-      tool.description.toLowerCase().includes(q)
-    );
-  });
+    return catalog.filter((tool) => {
+      const matchesCat = selectedCategory === 'all' || tool.category === selectedCategory;
+      if (!matchesCat) return false;
+      if (!q) return true;
+      return (
+        tool.title.toLowerCase().includes(q) ||
+        tool.categoryName.toLowerCase().includes(q) ||
+        tool.slug.toLowerCase().includes(q)
+      );
+    });
+  }, [catalog, selectedCategory, searchQuery]);
 
   // Popular curated tools
   const popularSlugs = [
@@ -68,9 +83,12 @@ export default function HomeClient() {
     'word-character-counter',
     'bmi-body-mass-index-calculator',
   ];
-  const popularTools = popularSlugs
-    .map((s) => TOOLS_REGISTRY.find((t) => t.slug === s))
-    .filter((t): t is ToolDef => Boolean(t));
+  const popularTools = useMemo(() => {
+    const bySlug = new Map(CORE_TOOLS_LIST.map((t) => [t.slug, t]));
+    return popularSlugs
+      .map((s) => bySlug.get(s))
+      .filter((t): t is SearchToolItem => Boolean(t));
+  }, []);
 
   return (
     <div className="space-y-12 pb-16">
@@ -199,7 +217,7 @@ export default function HomeClient() {
                     {tool.title}
                   </h3>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 line-clamp-2">
-                    {tool.description}
+                    Free client-side {tool.title}. Runs 100% locally inside your browser with instant results and zero uploads.
                   </p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-xs font-semibold text-blue-600 dark:text-blue-400">
@@ -227,7 +245,7 @@ export default function HomeClient() {
               </h2>
               <p className="text-xs text-neutral-500 mt-0.5">
                 Showing {filteredTools.length.toLocaleString()} {filteredTools.length === 1 ? 'tool' : 'tools'}
-                {selectedCategory !== 'all' && ` in ${CATEGORIES.find((c) => c.slug === selectedCategory)?.name}`}
+                {selectedCategory !== 'all' && ` in ${SYNCED_CATEGORIES.find((c) => c.slug === selectedCategory)?.name}`}
               </p>
             </div>
             <span className="text-[11px] text-neutral-400 font-medium hidden sm:inline shrink-0">
@@ -247,7 +265,7 @@ export default function HomeClient() {
             >
               All Categories ({TOTAL_TOOLS_LABEL})
             </button>
-            {CATEGORIES.map((c) => (
+            {SYNCED_CATEGORIES.map((c) => (
               <button
                 key={c.slug}
                 onClick={() => setSelectedCategory(c.slug)}
@@ -282,7 +300,7 @@ export default function HomeClient() {
                   {tool.title}
                 </h3>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
-                  {tool.description}
+                  Free client-side {tool.title}. Runs 100% locally in your browser.
                 </p>
               </div>
               <div className="mt-3 pt-2 border-t border-neutral-100 dark:border-neutral-800/60 flex items-center justify-between text-[11px] font-semibold text-blue-600 dark:text-blue-400">
@@ -320,7 +338,7 @@ export default function HomeClient() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {CATEGORIES.map((cat) => (
+          {SYNCED_CATEGORIES.map((cat) => (
             <Link
               key={cat.slug}
               href={`/category/${cat.slug}`}

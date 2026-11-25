@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import { ShieldCheck, Lock, EyeOff, Cookie, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { SITE_URL } from '@/lib/siteConfig';
-import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
+import { TOTAL_TOOLS_LABEL } from '@/data/catalogMeta';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy - SnapTools',

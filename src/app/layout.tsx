@@ -5,7 +5,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import CookieConsent from '@/components/layout/CookieConsent';
 import { SITE_URL, SITE_NAME } from '@/lib/siteConfig';
-import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
+import { TOTAL_TOOLS_LABEL } from '@/data/catalogMeta';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

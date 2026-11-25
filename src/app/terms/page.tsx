@@ -2,7 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { SITE_URL } from '@/lib/siteConfig';
-import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
+import { TOTAL_TOOLS_LABEL } from '@/data/catalogMeta';
 
 export const metadata: Metadata = {
   title: 'Terms of Service - SnapTools',

@@ -129,6 +129,12 @@ const UNIT_GROUPS: Record<string, UnitGroup> = {
       ground: 222.967,
       guntha: 101.1714,
       bigha: 2529.285,
+      decimal: 40.4686,
+      kanal: 505.857,
+      marla: 25.2929,
+      biswa: 126.46,
+      katha: 126.44,
+      ankadam: 6.689,
       acre: 4046.86,
       hectare: 10000,
       sq_km: 1000000,
@@ -263,11 +269,46 @@ const UNIT_GROUPS: Record<string, UnitGroup> = {
   },
 };
 
+const TIMEZONES: Record<string, { label: string; offsetMin: number }> = {
+  IST: { label: 'IST (India UTC+5:30)', offsetMin: 330 },
+  UTC: { label: 'UTC (Universal Time)', offsetMin: 0 },
+  GMT: { label: 'GMT (London UTC+0)', offsetMin: 0 },
+  EST: { label: 'EST (US East UTC-5)', offsetMin: -300 },
+  EDT: { label: 'EDT (US East DST UTC-4)', offsetMin: -240 },
+  CST: { label: 'CST (US Central UTC-6)', offsetMin: -360 },
+  MST: { label: 'MST (US Mountain UTC-7)', offsetMin: -420 },
+  PST: { label: 'PST (US Pacific UTC-8)', offsetMin: -480 },
+  PDT: { label: 'PDT (US Pacific DST UTC-7)', offsetMin: -420 },
+  CET: { label: 'CET (Europe UTC+1)', offsetMin: 60 },
+  GST: { label: 'GST (Dubai/UAE UTC+4)', offsetMin: 240 },
+  SGT: { label: 'SGT (Singapore UTC+8)', offsetMin: 480 },
+  HKT: { label: 'HKT (Hong Kong UTC+8)', offsetMin: 480 },
+  JST: { label: 'JST (Tokyo UTC+9)', offsetMin: 540 },
+  AEST: { label: 'AEST (Sydney UTC+10)', offsetMin: 600 },
+  NZST: { label: 'NZST (Auckland UTC+12)', offsetMin: 720 },
+  BRT: { label: 'BRT (Brazil UTC-3)', offsetMin: -180 },
+};
+
+function formatTzMinutes(utcMinutes: number, targetOffset: number): { hhmm: string; ampm: string; dayShift: string } {
+  const raw = utcMinutes + targetOffset;
+  const dayOffset = Math.floor(raw / 1440);
+  const minsInDay = ((raw % 1440) + 1440) % 1440;
+  const h24 = Math.floor(minsInDay / 60);
+  const m = minsInDay % 60;
+  const period = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  const hhmm = `${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  const ampm = `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  const dayShift = dayOffset > 0 ? 'Next Day (+1d)' : dayOffset < 0 ? 'Previous Day (-1d)' : 'Same Day';
+  return { hhmm, ampm, dayShift };
+}
+
 function detectUnitGroup(tool: ToolDef): string {
   if (tool.spec?.mode === 'unit-pair' && typeof tool.spec.group === 'string' && UNIT_GROUPS[tool.spec.group]) {
     return tool.spec.group;
   }
   if (tool.spec?.mode === 'base-pair') return 'number-base';
+  if (tool.spec?.mode === 'timezone' || tool.slug.includes('timezone') || tool.slug.includes('time-zone')) return 'timezone';
 
   const slug = tool.slug;
   if (slug.includes('number-base') || slug.includes('bin-oct-dec-hex')) return 'number-base';
@@ -305,6 +346,7 @@ function formatNum(n: number): string {
 export default function ConverterEngine({ tool }: { tool: ToolDef }) {
   const detectedType = detectUnitGroup(tool);
   const isNumberBase = detectedType === 'number-base';
+  const isTimezone = detectedType === 'timezone';
 
   const group = UNIT_GROUPS[detectedType] || UNIT_GROUPS.length;
   const unitKeys = Object.keys(group.units);
@@ -317,11 +359,22 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
     typeof tool.spec?.to === 'string' && group.units[tool.spec.to]
       ? tool.spec.to
       : unitKeys[0];
+  const initialVal = typeof tool.spec?.defaultVal === 'number' ? tool.spec.defaultVal : 100;
 
   const [fromUnit, setFromUnit] = useState<string>(initialFrom);
   const [targetUnit, setTargetUnit] = useState<string>(initialTo);
-  const [inputValue, setInputValue] = useState<number>(100);
+  const [inputValue, setInputValue] = useState<number>(initialVal);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const [fromTz, setFromTz] = useState<string>(
+    typeof tool.spec?.fromTz === 'string' && TIMEZONES[tool.spec.fromTz] ? tool.spec.fromTz : 'EST'
+  );
+  const [toTz, setToTz] = useState<string>(
+    typeof tool.spec?.toTz === 'string' && TIMEZONES[tool.spec.toTz] ? tool.spec.toTz : 'IST'
+  );
+  const [tzTime, setTzTime] = useState<string>(
+    typeof tool.spec?.defaultTime === 'string' ? tool.spec.defaultTime : '09:00'
+  );
 
   const initialBase = typeof tool.spec?.fromBase === 'number' ? tool.spec.fromBase : 10;
   const initialToBase = typeof tool.spec?.toBase === 'number' ? tool.spec.toBase : 2;
@@ -338,10 +391,17 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
       setBaseInput(fb === 16 ? 'FF' : fb === 2 ? '11111111' : fb === 8 ? '377' : '255');
       return;
     }
+    if (type === 'timezone') {
+      setFromTz(typeof tool.spec?.fromTz === 'string' && TIMEZONES[tool.spec.fromTz] ? tool.spec.fromTz : 'EST');
+      setToTz(typeof tool.spec?.toTz === 'string' && TIMEZONES[tool.spec.toTz] ? tool.spec.toTz : 'IST');
+      setTzTime(typeof tool.spec?.defaultTime === 'string' ? tool.spec.defaultTime : '09:00');
+      return;
+    }
     const grp = UNIT_GROUPS[type] || UNIT_GROUPS.length;
     const keys = Object.keys(grp.units);
     setFromUnit(typeof tool.spec?.from === 'string' && grp.units[tool.spec.from] ? tool.spec.from : keys[1] || keys[0]);
     setTargetUnit(typeof tool.spec?.to === 'string' && grp.units[tool.spec.to] ? tool.spec.to : keys[0]);
+    setInputValue(typeof tool.spec?.defaultVal === 'number' ? tool.spec.defaultVal : 100);
   }, [tool]);
 
   const toBaseValue = (val: number, unit: string): number => {
@@ -369,6 +429,104 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1500);
   };
+
+  if (isTimezone) {
+    const [hhStr, mmStr] = (tzTime || '09:00').split(':');
+    const inMins = (Number(hhStr) || 0) * 60 + (Number(mmStr) || 0);
+    const utcMins = inMins - (TIMEZONES[fromTz]?.offsetMin || 0);
+    const direct = formatTzMinutes(utcMins, TIMEZONES[toTz]?.offsetMin || 0);
+    return (
+      <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
+        <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">Time (24h)</label>
+            <input
+              type="time"
+              value={tzTime}
+              onChange={(e) => setTzTime(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-lg font-mono font-bold focus:outline-hidden"
+            />
+          </div>
+          <div className="md:col-span-4">
+            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">From Time Zone</label>
+            <select
+              value={fromTz}
+              onChange={(e) => setFromTz(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm font-semibold focus:outline-hidden"
+            >
+              {Object.entries(TIMEZONES).map(([k, v]) => (
+                <option key={k} value={k}>{v.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-1 flex justify-center pb-1">
+            <button
+              type="button"
+              onClick={() => { setFromTz(toTz); setToTz(fromTz); }}
+              title="Swap Time Zones"
+              className="p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-blue-500 transition"
+            >
+              <ArrowLeftRight className="w-4 h-4 text-blue-600" />
+            </button>
+          </div>
+          <div className="md:col-span-4">
+            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">To Time Zone</label>
+            <select
+              value={toTz}
+              onChange={(e) => setToTz(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm font-semibold focus:outline-hidden"
+            >
+              {Object.entries(TIMEZONES).map(([k, v]) => (
+                <option key={k} value={k}>{v.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div
+          onClick={() => handleCopy(`${direct.ampm} ${toTz} (${direct.dayShift})`, 'tz-spotlight')}
+          className="p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-violet-500/10 border border-blue-500/30 cursor-pointer flex items-center justify-between gap-4"
+        >
+          <div>
+            <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+              {tzTime} {fromTz} =
+            </div>
+            <div className="text-2xl sm:text-3xl font-mono font-extrabold text-blue-600 dark:text-blue-400 mt-1">
+              {direct.ampm}{' '}
+              <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+                ({direct.hhmm} {toTz} &bull; {direct.dayShift})
+              </span>
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-blue-600 shrink-0">
+            {copiedKey === 'tz-spotlight' ? 'Copied' : 'Copy'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {Object.entries(TIMEZONES).map(([code, tz]) => {
+            const conv = formatTzMinutes(utcMins, tz.offsetMin);
+            const active = code === toTz;
+            return (
+              <div
+                key={code}
+                onClick={() => handleCopy(`${conv.ampm} ${code}`, code)}
+                className={`p-4 rounded-xl border cursor-pointer transition ${
+                  active
+                    ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/30'
+                    : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/40'
+                }`}
+              >
+                <div className="text-[11px] font-medium text-neutral-500">{tz.label}</div>
+                <div className="text-base font-mono font-bold text-neutral-900 dark:text-white mt-0.5">{conv.ampm}</div>
+                <div className="text-[10px] text-neutral-400">{conv.hhmm} &bull; {conv.dayShift}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   if (isNumberBase) {
     const parsedDec = parseInt(baseInput.trim(), sourceBase);

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import HomeClient from '@/components/home/HomeClient';
 import { SITE_URL, SITE_NAME } from '@/lib/siteConfig';
-import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
+import { TOTAL_TOOLS_LABEL } from '@/data/catalogMeta';
 
 export const metadata: Metadata = {
   alternates: {

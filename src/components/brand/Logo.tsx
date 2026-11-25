@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
+import { TOTAL_TOOLS_LABEL } from '@/data/catalogMeta';
 
 interface LogoProps {
   className?: string;
