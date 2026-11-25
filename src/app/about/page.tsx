@@ -84,7 +84,7 @@ export default function AboutPage() {
           </div>
           <h3 className="font-bold text-neutral-900 dark:text-white text-sm">Always Free</h3>
           <p className="text-xs text-neutral-500 leading-relaxed">
-            Supported responsibly through privacy-friendly Google AdSense advertising so the entire platform remains freely accessible to everyone worldwide.
+            Supported responsibly through web advertising so the entire platform remains freely accessible to everyone worldwide.
           </p>
         </div>
       </div>

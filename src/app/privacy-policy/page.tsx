@@ -8,7 +8,7 @@ import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 export const metadata: Metadata = {
   title: 'Privacy Policy - SnapTools',
   description:
-    'Read the official SnapTools Privacy Policy. Detailed explanation of our 100% client-side zero-upload data architecture and Google AdSense compliance policies.',
+    'Read the official SnapTools Privacy Policy. Detailed explanation of our 100% client-side zero-upload data architecture, advertising cookies, GDPR & CCPA compliance.',
   alternates: {
     canonical: `${SITE_URL}/privacy-policy`,
   },
@@ -25,7 +25,7 @@ export default function PrivacyPolicyPage() {
           Privacy Policy
         </h1>
         <p className="text-xs text-neutral-500">
-          Effective Date: November 2026 | Compliant with Google AdSense Policies, GDPR &amp; CCPA
+          Effective Date: November 2026 | Compliant with GDPR &amp; CCPA
         </p>
       </div>
 
@@ -69,23 +69,17 @@ export default function PrivacyPolicyPage() {
         <section className="space-y-3 p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
           <div className="flex items-center gap-2 text-sm font-bold text-neutral-900 dark:text-white">
             <Cookie className="w-4 h-4 text-amber-500" />
-            <h3>3. Google AdSense &amp; Third-Party Advertising Policy Compliance</h3>
+            <h3>3. Third-Party Advertising &amp; Cookies Disclosure</h3>
           </div>
           <p>
-            This website is monetized through <strong>Google AdSense</strong> to ensure all {TOTAL_TOOLS_LABEL} micro-tools remain 100% free forever. In accordance with Google&apos;s official Publisher Policies, please note the following disclosure:
+            This website displays third-party advertisements (including Adsterra display banners and sponsored links) to keep all {TOTAL_TOOLS_LABEL} micro-tools 100% free forever:
           </p>
           <ul className="list-disc pl-5 space-y-1.5">
             <li>
-              <strong>Third-Party Vendors:</strong> Third-party vendors, including Google, use cookies to serve ads based on a user&apos;s prior visits to this website or other websites on the internet.
+              <strong>Third-Party Ad Networks:</strong> Third-party advertising partners may use cookies, web beacons, or standard browser identifiers when serving banner or native ads on SnapTools to measure ad delivery and prevent fraud.
             </li>
             <li>
-              <strong>DoubleClick / Advertising Cookies:</strong> Google&apos;s use of advertising cookies enables it and its partners to serve personalized or contextual advertisements to users based on their visits to SnapTools and other websites across the web.
-            </li>
-            <li>
-              <strong>Opting Out of Personalized Advertising:</strong> Users may opt out of personalized advertising by visiting the official <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">Google Ads Settings</a> page.
-            </li>
-            <li>
-              <strong>Third-Party Ad Network Opt-Out:</strong> Alternatively, users can opt out of a third-party vendor&apos;s use of cookies for personalized advertising by visiting <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">www.aboutads.info</a> or <a href="https://www.networkadvertising.org/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">Network Advertising Initiative (NAI)</a>.
+              <strong>Opting Out of Personalized Advertising:</strong> Users can manage or opt out of interest-based advertising across participating ad networks by visiting <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">www.aboutads.info</a> or <a href="https://www.networkadvertising.org/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">Network Advertising Initiative (NAI)</a>.
             </li>
           </ul>
         </section>
@@ -119,7 +113,7 @@ export default function PrivacyPolicyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">7. Contact &amp; Inquiries</h2>
           <p>
-            If you have questions regarding this Privacy Policy or Google AdSense disclosures, reach out directly via our <Link href="/contact" className="text-amber-600 dark:text-amber-400 font-semibold underline">Contact Support Portal</Link>.
+            If you have questions regarding this Privacy Policy or advertising disclosures, reach out directly via our <Link href="/contact" className="text-amber-600 dark:text-amber-400 font-semibold underline">Contact Support Portal</Link>.
           </p>
         </section>
       </div>

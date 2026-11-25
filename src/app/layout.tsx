@@ -4,7 +4,6 @@ import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import CookieConsent from '@/components/layout/CookieConsent';
-import Script from 'next/script';
 import { SITE_URL, SITE_NAME } from '@/lib/siteConfig';
 import { TOTAL_TOOLS_LABEL } from '@/data/toolsRegistry';
 
@@ -71,8 +70,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const adsenseId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
-
   return (
     <html
       lang="en"
@@ -84,18 +81,6 @@ export default function RootLayout({
           name="google-site-verification"
           content="google562716ed7142a0a3"
         />
-        {/* Google AdSense Site Verification & Script (Active when ID is configured) */}
-        {adsenseId && (
-          <>
-            <meta name="google-adsense-account" content={adsenseId} />
-            <Script
-              async
-              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseId}`}
-              crossOrigin="anonymous"
-              strategy="afterInteractive"
-            />
-          </>
-        )}
       </head>
       <body className="min-h-full flex flex-col bg-neutral-50/60 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 selection:bg-blue-600 selection:text-white">
         <Header />
