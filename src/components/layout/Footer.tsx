@@ -70,6 +70,9 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
+            <Link href="/arcade" className="text-amber-600 dark:text-amber-400 hover:underline font-semibold transition">
+              Mini-Arcade
+            </Link>
             <Link href="/about" className="hover:text-neutral-900 dark:hover:text-white transition">
               About Us
             </Link>

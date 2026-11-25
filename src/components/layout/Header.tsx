@@ -13,6 +13,8 @@ import {
   Layers,
   Sparkles,
   Heart,
+  Gamepad2,
+  Dices,
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import { SYNCED_CATEGORIES, TOTAL_TOOLS_LABEL } from '@/data/catalogMeta';
@@ -107,6 +109,24 @@ export default function Header() {
     router.push(`/tools/${slug}`);
   };
 
+  const handleSurpriseMe = async () => {
+    let pool = catalog;
+    if (pool.length <= CORE_TOOLS_LIST.length) {
+      try {
+        const full = await loadFullToolsIndex();
+        if (full.length > 0) {
+          pool = full;
+          setCatalog(full);
+        }
+      } catch {
+        // fall back to loaded catalog
+      }
+    }
+    if (pool.length === 0) return;
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+    router.push(`/tools/${picked.slug}`);
+  };
+
   return (
     <>
       <header className="sticky top-0 z-40 w-full border-b border-neutral-200/80 dark:border-neutral-800/80 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md">
@@ -180,6 +200,25 @@ export default function Header() {
               <Sparkles className="w-4 h-4 text-amber-500" />
               <span className="hidden sm:inline">Popular</span>
             </Link>
+
+            {/* Arcade Mini-Games link */}
+            <Link
+              href="/arcade"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition"
+            >
+              <Gamepad2 className="w-4 h-4 text-amber-500" />
+              <span>Arcade</span>
+            </Link>
+
+            {/* Surprise Random Tool button */}
+            <button
+              onClick={handleSurpriseMe}
+              title={`Open a random tool from all ${TOTAL_TOOLS_LABEL} utilities`}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition cursor-pointer"
+            >
+              <Dices className="w-4 h-4 text-purple-500" />
+              <span className="hidden lg:inline">Random</span>
+            </button>
           </nav>
         </div>
       </header>

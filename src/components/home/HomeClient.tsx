@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   Layers,
@@ -11,12 +12,16 @@ import {
   Clock,
   ChevronRight,
   TrendingUp,
+  Gamepad2,
+  Dices,
 } from 'lucide-react';
 import { TOTAL_TOOLS_LABEL, SYNCED_CATEGORIES } from '@/data/catalogMeta';
 import { CORE_TOOLS_LIST, loadFullToolsIndex, SearchToolItem } from '@/data/clientCatalog';
 import AdSlot from '@/components/ads/AdSlot';
+import { ARCADE_GAMES } from '@/components/arcade/arcadeUtils';
 
 export default function HomeClient() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [catalog, setCatalog] = useState<SearchToolItem[]>(CORE_TOOLS_LIST);
@@ -146,6 +151,26 @@ export default function HomeClient() {
                 <Layers className="w-3.5 h-3.5 text-emerald-500" /> 20 Comprehensive Categories
               </span>
             </div>
+
+            {/* Fun Quick Actions */}
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+              <Link
+                href="/arcade"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition"
+              >
+                <Gamepad2 className="w-4 h-4" /> Play SnapTools Arcade (6 Mini-Games)
+              </Link>
+              <button
+                onClick={() => {
+                  const pool = catalog.length > 0 ? catalog : CORE_TOOLS_LIST;
+                  const pick = pool[Math.floor(Math.random() * pool.length)];
+                  if (pick) router.push(`/tools/${pick.slug}`);
+                }}
+                className="px-4 py-2 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 hover:border-purple-500 text-neutral-800 dark:text-neutral-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+              >
+                <Dices className="w-4 h-4 text-purple-500" /> Surprise Me (Random Tool)
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -226,6 +251,57 @@ export default function HomeClient() {
                 </div>
               </Link>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* SnapTools Arcade Showcase */}
+      {!searchQuery && selectedCategory === 'all' && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="rounded-3xl border border-amber-200/80 dark:border-amber-900/50 bg-gradient-to-br from-amber-50/70 via-white to-orange-50/50 dark:from-neutral-900 dark:via-neutral-900 dark:to-amber-950/20 p-6 sm:p-7 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
+                  <Gamepad2 className="w-5 h-5 text-amber-500" /> SnapTools Mini-Arcade &bull; Take a Brain Break
+                </h2>
+                <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
+                  Instant client-side browser mini-games with retro SFX and local high scores.
+                </p>
+              </div>
+              <Link
+                href="/arcade"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 hover:underline shrink-0"
+              >
+                Open Full Arcade <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {ARCADE_GAMES.map((game) => (
+                <Link
+                  key={game.id}
+                  href={`/arcade?game=${game.id}`}
+                  className="p-4 rounded-2xl border border-neutral-200/90 dark:border-neutral-800 bg-white dark:bg-neutral-950/80 hover:border-amber-500 hover:shadow-md transition group flex items-center justify-between gap-3"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span
+                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full text-white bg-gradient-to-r ${game.accent}`}
+                      >
+                        {game.badge}
+                      </span>
+                      <span className="text-sm font-bold text-neutral-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
+                        {game.title}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 line-clamp-1">
+                      {game.tagline}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-amber-500 group-hover:translate-x-1 transition shrink-0" />
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
       )}
