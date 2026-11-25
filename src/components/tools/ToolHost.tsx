@@ -33,6 +33,18 @@ export default function ToolHost({ tool }: { tool: ToolDef }) {
     }
   }, [tool.slug]);
 
+  // Load Adsterra Popunder on tool workspaces without blocking Homepage/Category navigation clicks
+  useEffect(() => {
+    const existing = document.querySelector('script[data-adsterra-popunder="true"]');
+    if (!existing) {
+      const script = document.createElement('script');
+      script.setAttribute('data-cfasync', 'false');
+      script.setAttribute('data-adsterra-popunder', 'true');
+      script.src = 'https://abscloud.org/1/ebc859b77afbd48754a613c6f1528b9f';
+      document.head.appendChild(script);
+    }
+  }, [tool.slug]);
+
   const toggleFavorite = () => {
     try {
       const favs: string[] = JSON.parse(localStorage.getItem('omnitools_favorites') || '[]');
