@@ -2,7 +2,16 @@
 
 > **25,694 Handcrafted, 100% Client-Side Micro-Tools across 20 Categories. Zero File Uploads. Zero Accounts. 100% Private & Free Forever.**
 
-🌐 **Live Production App:** [https://snaptools-app.vercel.app](https://snaptools-app.vercel.app)
+🌐 **Live Production App:** [https://snaptool.me](https://snaptool.me)
+
+---
+
+## ✨ Interactive Studios & Arcade
+- **GST Invoice PDF Studio:** [https://snaptool.me/studio/invoice](https://snaptool.me/studio/invoice)
+- **Digital Signature & PDF Signer:** [https://snaptool.me/studio/signature](https://snaptool.me/studio/signature)
+- **ATS Resume PDF Builder:** [https://snaptool.me/studio/resume](https://snaptool.me/studio/resume)
+- **Complete A–Z Directory (25,694 Tools):** [https://snaptool.me/directory](https://snaptool.me/directory)
+- **SnapTools Mini-Arcade (6 Browser Games):** [https://snaptool.me/arcade](https://snaptool.me/arcade)
 
 ---
 
@@ -21,7 +30,7 @@
 
 ## 🛠️ Popular Tool Categories
 
-Explore all 20 curated categories at [SnapTools Categories](https://snaptools-app.vercel.app):
+Explore all 20 curated categories at [SnapTools Categories](https://snaptool.me):
 
 1. **PDF & Document Utilities** – Compress PDF, merge, split, rotate, watermark, extract pages, convert images to PDF.
 2. **Image Optimization & Conversion** – WebP/PNG/JPG/AVIF converters, SVG optimizer, background remover, crop & resize.
