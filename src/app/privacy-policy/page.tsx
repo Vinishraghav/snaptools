@@ -8,7 +8,7 @@ import { TOTAL_TOOLS_LABEL } from '@/data/catalogMeta';
 export const metadata: Metadata = {
   title: 'Privacy Policy - SnapTools',
   description:
-    'Read the official SnapTools Privacy Policy. Detailed explanation of our 100% client-side zero-upload data architecture, advertising cookies, GDPR & CCPA compliance.',
+    'Read the official SnapTools Privacy Policy. Detailed explanation of our 100% client-side zero-upload data architecture, Google AdSense cookies, GDPR & CCPA compliance.',
   alternates: {
     canonical: `${SITE_URL}/privacy-policy`,
   },
@@ -25,7 +25,7 @@ export default function PrivacyPolicyPage() {
           Privacy Policy
         </h1>
         <p className="text-xs text-neutral-500">
-          Effective Date: November 2026 | Compliant with GDPR &amp; CCPA
+          Effective Date: November 2026 | Compliant with Google AdSense Policies, GDPR &amp; CCPA
         </p>
       </div>
 
@@ -72,14 +72,14 @@ export default function PrivacyPolicyPage() {
             <h3>3. Third-Party Advertising &amp; Cookies Disclosure</h3>
           </div>
           <p>
-            This website displays third-party advertisements (including Adsterra display banners and sponsored links) to keep all {TOTAL_TOOLS_LABEL} micro-tools 100% free forever:
+            This website uses Google AdSense to display advertisements and keep all {TOTAL_TOOLS_LABEL} micro-tools 100% free forever:
           </p>
           <ul className="list-disc pl-5 space-y-1.5">
             <li>
-              <strong>Third-Party Ad Networks:</strong> Third-party advertising partners may use cookies, web beacons, or standard browser identifiers when serving banner or native ads on SnapTools to measure ad delivery and prevent fraud.
+              <strong>Google AdSense &amp; Cookies:</strong> Google and third-party vendors use cookies to serve ads based on a user&apos;s prior visits to this website or other websites across the Internet.
             </li>
             <li>
-              <strong>Opting Out of Personalized Advertising:</strong> Users can manage or opt out of interest-based advertising across participating ad networks by visiting <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">www.aboutads.info</a> or <a href="https://www.networkadvertising.org/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">Network Advertising Initiative (NAI)</a>.
+              <strong>Opting Out of Personalized Advertising:</strong> Users may opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">Google Ads Settings</a>, <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">www.aboutads.info</a>, or the <a href="https://www.networkadvertising.org/choices/" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 font-semibold underline">Network Advertising Initiative (NAI)</a>.
             </li>
           </ul>
         </section>

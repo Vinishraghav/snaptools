@@ -40,7 +40,7 @@ export default function CookieConsent() {
             Privacy & Cookie Preferences
           </p>
           <p className="text-neutral-600 dark:text-neutral-400">
-            We use cookies and local storage solely to save your recent tools, support third-party advertising, and ensure fast, private client-side processing. Your tool files never leave your browser.
+            We use cookies and local storage solely to save your recent tools, personalize advertising via Google AdSense, and ensure fast, private client-side processing. Your tool files never leave your browser.
           </p>
           <div className="mt-2 text-xs">
             <Link

@@ -97,14 +97,6 @@ export default function Footer() {
             <Link href="/contact" className="hover:text-neutral-900 dark:hover:text-white transition">
               Contact &amp; Feedback
             </Link>
-            <a
-              href="https://araplhn.org/4/c46eadbbc026df8e5b3964738f24cbd2"
-              target="_blank"
-              rel="noopener noreferrer sponsored nofollow"
-              className="text-amber-600 dark:text-amber-400 hover:underline font-medium transition"
-            >
-              Partner Deals (Sponsored)
-            </a>
           </div>
         </div>
 
