@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ToolDef } from '@/data/toolsRegistry';
+import { SITE_URL } from '@/lib/siteConfig';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { Copy, Check, Download, RefreshCw, Dice5, Clock, ShieldCheck } from 'lucide-react';
@@ -57,7 +58,7 @@ function getQrPresetPayload(qrPreset: string | undefined, slug: string): string 
   if (key.includes('instagram')) return 'https://www.instagram.com/snaptools';
   if (key.includes('linkedin')) return 'https://www.linkedin.com/company/snaptools';
   if (key.includes('google-review')) return 'https://g.page/r/example/review';
-  return 'https://snaptools-app.vercel.app';
+  return SITE_URL;
 }
 
 export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
@@ -182,7 +183,7 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
 
   useEffect(() => {
     if (!isTokenGenerator && !isSecurityOrNetConfig && !slug.includes('barcode') && !slug.includes('timer') && !slug.includes('pomodoro') && !slug.includes('dice') && !slug.includes('coin')) {
-      QRCode.toDataURL(inputText || 'https://snaptools-app.vercel.app', { width: 320, margin: 2 }, (err, url) => {
+      QRCode.toDataURL(inputText || SITE_URL, { width: 320, margin: 2 }, (err, url) => {
         if (!err && url) setQrDataUrl(url);
       });
     }
@@ -448,7 +449,7 @@ export default function GeneratorEngine({ tool }: { tool: ToolDef }) {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm font-mono focus:outline-hidden"
-              placeholder="https://snaptools-app.vercel.app"
+              placeholder={SITE_URL}
             />
           </div>
 

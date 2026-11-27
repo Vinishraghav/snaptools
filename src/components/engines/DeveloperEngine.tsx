@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { ToolDef } from '@/data/toolsRegistry';
 import { TOTAL_TOOLS_COUNT } from '@/data/catalogMeta';
+import { SITE_URL } from '@/lib/siteConfig';
 import * as yaml from 'js-yaml';
 import {
   Copy,
@@ -36,7 +37,7 @@ function getInitialSample(slug: string): string {
   if (slug.includes('yaml') && !slug.includes('json-to-yaml')) return SAMPLES.yaml;
   if (slug.includes('markdown')) return SAMPLES.markdown;
   if (slug.includes('curl')) return SAMPLES.curl;
-  if (slug.includes('regex')) return 'Test input: ABCDE1234F | dev@snaptools.app | https://snaptools-app.vercel.app | +91-9876543210 | 2026-11-25 | #f3f4f6 | 192.168.1.1';
+  if (slug.includes('regex')) return `Test input: ABCDE1234F | dev@snaptool.me | ${SITE_URL} | +91-9876543210 | 2026-11-25 | #f3f4f6 | 192.168.1.1`;
   return SAMPLES.json;
 }
 
