@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
+import { ADSENSE_CLIENT_ID } from '@/lib/siteConfig';
 
 export async function GET() {
-  const rawId = (process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || '').trim();
-  const normalizedPubId = rawId.replace(/^ca-/, '');
+  const normalizedPubId = ADSENSE_CLIENT_ID.replace(/^ca-/, '');
 
   if (!/^pub-\d{10,}$/.test(normalizedPubId)) {
     return new NextResponse('Google AdSense publisher ID not yet configured.', {

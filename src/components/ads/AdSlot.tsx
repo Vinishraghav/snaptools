@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { ADSENSE_CLIENT_ID } from '@/lib/siteConfig';
 
 interface AdSlotProps {
   slotId?: string;
@@ -10,7 +11,6 @@ interface AdSlotProps {
   label?: string;
 }
 
-const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || '';
 const DEFAULT_ADSENSE_SLOT = process.env.NEXT_PUBLIC_ADSENSE_SLOT_DEFAULT || '';
 
 export default function AdSlot({
