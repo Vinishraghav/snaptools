@@ -1,0 +1,44 @@
+{
+  "name": "SnapTools — 100% Client-Side Micro-Tools & Offline Suite",
+  "short_name": "SnapTools",
+  "description": "25,694 private client-side PDF, image, Indian exam photo, land matrix, tax, finance & developer utilities. Works offline in browser memory.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0a0a",
+  "theme_color": "#2563eb",
+  "categories": ["utilities", "productivity", "finance"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Smart Image Compressor",
+      "url": "/tools/image-compressor-lossy-lossless"
+    },
+    {
+      "name": "PDF Compressor (Target KB)",
+      "url": "/tools/pdf-compressor-target-kb"
+    },
+    {
+      "name": "Indian Land Area Matrix",
+      "url": "/tools/indian-land-area-converter-cent-ground-guntha-bigha-kanal-marla"
+    },
+    {
+      "name": "Income Tax FY 2026-27",
+      "url": "/tools/indian-income-tax-calculator-new-vs-old-regime"
+    }
+  ]
+}

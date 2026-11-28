@@ -2,22 +2,17 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { TOOLS_REGISTRY, getToolBySlug, getRelatedTools, ToolDef } from '@/data/toolsRegistry';
+import { TOOLS_REGISTRY, getToolBySlug, getRelatedTools } from '@/data/toolsRegistry';
 import ToolHost from '@/components/tools/ToolHost';
 import AdSlot from '@/components/ads/AdSlot';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
 import { SITE_URL, SITE_NAME } from '@/lib/siteConfig';
 import {
   ChevronRight,
-  ShieldCheck,
-  Zap,
   HelpCircle,
-  Sparkles,
   ArrowRight,
-  Lock,
   CheckCircle,
   Search,
-  Check,
 } from 'lucide-react';
 
 interface ToolPageProps {
@@ -51,7 +46,7 @@ export async function generateMetadata({ params }: ToolPageProps): Promise<Metad
 
   const cleanTitle = tool.title;
   const title = `${cleanTitle} - Free Online Tool | Instant & Private`;
-  const description = `Use our free online ${cleanTitle}. 100% client-side processing in your browser with zero file uploads and zero wait times. Try ${cleanTitle} free now!`;
+  const description = `${tool.description} Runs 100% offline inside browser memory.`;
 
   return {
     title,
@@ -100,7 +95,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
     '@context': 'https://schema.org',
     '@graph': [
       {
-        '@type': 'WebApplication',
+        '@type': 'SoftwareApplication',
         name: tool.title,
         url: `${SITE_URL}/tools/${tool.slug}`,
         description: tool.description,
@@ -189,7 +184,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
         </h1>
 
         <p className="text-base text-neutral-600 dark:text-neutral-400 max-w-3xl leading-relaxed">
-          {tool.description} Operates 100% locally in your browser with complete client-side security and zero server uploads.
+          {tool.description}
         </p>
       </div>
 

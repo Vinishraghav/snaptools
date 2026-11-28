@@ -1,27 +1,41 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { ShieldCheck, X } from 'lucide-react';
 
-export default function CookieConsent() {
-  const [showBanner, setShowBanner] = useState(false);
+const CONSENT_EVENT = 'snaptools-consent-update';
 
-  useEffect(() => {
-    const consent = localStorage.getItem('snaptools_cookie_consent');
-    if (!consent) {
-      setShowBanner(true);
-    }
-  }, []);
+function subscribeConsent(cb: () => void) {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener(CONSENT_EVENT, cb);
+  window.addEventListener('storage', cb);
+  return () => {
+    window.removeEventListener(CONSENT_EVENT, cb);
+    window.removeEventListener('storage', cb);
+  };
+}
+
+function getShowBanner(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return !localStorage.getItem('snaptools_cookie_consent');
+  } catch {
+    return false;
+  }
+}
+
+export default function CookieConsent() {
+  const showBanner = useSyncExternalStore(subscribeConsent, getShowBanner, () => false);
 
   const handleAccept = () => {
     localStorage.setItem('snaptools_cookie_consent', 'accepted');
-    setShowBanner(false);
+    window.dispatchEvent(new Event(CONSENT_EVENT));
   };
 
   const handleDecline = () => {
     localStorage.setItem('snaptools_cookie_consent', 'declined');
-    setShowBanner(false);
+    window.dispatchEvent(new Event(CONSENT_EVENT));
   };
 
   if (!showBanner) return null;

@@ -85,7 +85,11 @@ function formatCss(css: string, minify: boolean): string {
     .trim();
 }
 
+import WorkflowChainBar from '@/components/tools/WorkflowChainBar';
+import { useWorkflowStore } from '@/lib/workflowStore';
+
 export default function DeveloperEngine({ tool }: { tool: ToolDef }) {
+  const { payload, markConsumed, pipeToTool } = useWorkflowStore();
   const spec = (tool.spec ?? {}) as Record<string, unknown>;
   const specRegex = typeof spec.regexPattern === 'string'
     ? spec.regexPattern
@@ -97,7 +101,8 @@ export default function DeveloperEngine({ tool }: { tool: ToolDef }) {
         ? 'minify'
         : 'format';
 
-  const [inputCode, setInputCode] = useState(() => getInitialSample(tool.slug));
+  const initialPayloadText = payload?.textPayload?.trim() || '';
+  const [inputCode, setInputCode] = useState(() => initialPayloadText || getInitialSample(tool.slug));
   const [outputCode, setOutputCode] = useState('');
   const [error, setError] = useState('');
   const [validBanner, setValidBanner] = useState('');
@@ -108,20 +113,11 @@ export default function DeveloperEngine({ tool }: { tool: ToolDef }) {
   const [activeKey, setActiveKey] = useState<{ key: string; code: string; keyCode: number } | null>(null);
 
   useEffect(() => {
-    setInputCode(getInitialSample(tool.slug));
-    setRegexPattern(
-      typeof spec.regexPattern === 'string'
-        ? spec.regexPattern
-        : '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,}'
-    );
-    setActionMode(
-      spec.mode === 'minify' || spec.mode === 'format'
-        ? spec.mode
-        : tool.slug.includes('minif')
-          ? 'minify'
-          : 'format'
-    );
-  }, [tool.slug, spec.regexPattern, spec.mode]);
+    if (initialPayloadText && payload?.id) {
+      Promise.resolve().then(() => markConsumed(payload.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (tool.slug.includes('keycode')) {
@@ -261,7 +257,10 @@ export default function DeveloperEngine({ tool }: { tool: ToolDef }) {
   );
 
   useEffect(() => {
-    runTransform();
+    const id = setTimeout(() => {
+      runTransform();
+    }, 0);
+    return () => clearTimeout(id);
   }, [runTransform]);
 
   const handleCopy = () => {
@@ -426,6 +425,22 @@ export default function DeveloperEngine({ tool }: { tool: ToolDef }) {
           <AlertCircle className="w-4 h-4 shrink-0" />
           Syntax Error: {error}
         </div>
+      )}
+
+      {tool.slug.toLowerCase().includes('json') && (outputCode || inputCode) && (
+        <WorkflowChainBar
+          currentSlug={tool.slug}
+          mode="data"
+          onPipe={(targetSlug) => {
+            const textToPass = outputCode.trim() || inputCode.trim();
+            if (!textToPass) return;
+            pipeToTool(targetSlug, {
+              files: [new File([textToPass], 'payload.json', { type: 'application/json' })],
+              textPayload: textToPass,
+              sourceToolSlug: tool.slug,
+            });
+          }}
+        />
       )}
     </div>
   );

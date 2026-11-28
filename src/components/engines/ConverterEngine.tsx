@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ToolDef } from '@/data/toolsRegistry';
 import { Copy, Check, ArrowLeftRight } from 'lucide-react';
 
@@ -331,9 +331,48 @@ function detectUnitGroup(tool: ToolDef): string {
   if (slug.includes('weight') || slug.includes('mass') || slug.includes('gold') || slug.includes('carat') || slug.includes('yarn')) return 'weight';
   if (slug.includes('temperature') || slug.includes('oven')) return 'temperature';
   if (slug.includes('speed') || slug.includes('wind-speed')) return 'speed';
-  if (slug.includes('area') || slug.includes('acre') || slug.includes('paper-size')) return 'area';
+  if (
+    slug.includes('area') ||
+    slug.includes('acre') ||
+    slug.includes('land') ||
+    slug.includes('cent') ||
+    slug.includes('ground') ||
+    slug.includes('bigha') ||
+    slug.includes('guntha') ||
+    slug.includes('kanal') ||
+    slug.includes('marla') ||
+    slug.includes('katha') ||
+    slug.includes('ankanam') ||
+    slug.includes('ankadam') ||
+    slug.includes('hectare') ||
+    slug.includes('sq-feet') ||
+    slug.includes('sqft') ||
+    slug.includes('paper-size')
+  ) {
+    return 'area';
+  }
   return 'length';
 }
+
+interface BighaStatePreset {
+  id: string;
+  label: string;
+  sqFtPerBigha: number;
+  sqFtPerKatha: number;
+}
+
+const BIGHA_STATES: BighaStatePreset[] = [
+  { id: 'up-pucca', label: 'Uttar Pradesh (Pucca: 27,225 sq ft)', sqFtPerBigha: 27225, sqFtPerKatha: 1361.25 },
+  { id: 'rajasthan', label: 'Rajasthan (17,424 sq ft)', sqFtPerBigha: 17424, sqFtPerKatha: 871.2 },
+  { id: 'wb', label: 'West Bengal (14,400 sq ft)', sqFtPerBigha: 14400, sqFtPerKatha: 720 },
+  { id: 'gujarat', label: 'Gujarat (17,424 sq ft)', sqFtPerBigha: 17424, sqFtPerKatha: 871.2 },
+  { id: 'bihar', label: 'Bihar / Jharkhand (27,220 sq ft)', sqFtPerBigha: 27220, sqFtPerKatha: 1361 },
+  { id: 'punjab', label: 'Punjab / Haryana (10,890 sq ft)', sqFtPerBigha: 10890, sqFtPerKatha: 544.5 },
+  { id: 'assam', label: 'Assam (14,400 sq ft)', sqFtPerBigha: 14400, sqFtPerKatha: 2880 },
+  { id: 'hp', label: 'Himachal / Uttarakhand (8,712 sq ft)', sqFtPerBigha: 8712, sqFtPerKatha: 435.6 },
+];
+
+const SQM_PER_SQFT = 0.09290304;
 
 function formatNum(n: number): string {
   if (n === 0) return '0';
@@ -383,26 +422,31 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
   );
   const [sourceBase, setSourceBase] = useState<number>(initialBase);
 
-  useEffect(() => {
-    const type = detectUnitGroup(tool);
-    if (type === 'number-base') {
-      const fb = typeof tool.spec?.fromBase === 'number' ? tool.spec.fromBase : 10;
-      setSourceBase(fb);
-      setBaseInput(fb === 16 ? 'FF' : fb === 2 ? '11111111' : fb === 8 ? '377' : '255');
-      return;
+  const [bighaStateId, setBighaStateId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('bigha');
+      if (p && BIGHA_STATES.some((s) => s.id === p)) return p;
     }
-    if (type === 'timezone') {
-      setFromTz(typeof tool.spec?.fromTz === 'string' && TIMEZONES[tool.spec.fromTz] ? tool.spec.fromTz : 'EST');
-      setToTz(typeof tool.spec?.toTz === 'string' && TIMEZONES[tool.spec.toTz] ? tool.spec.toTz : 'IST');
-      setTzTime(typeof tool.spec?.defaultTime === 'string' ? tool.spec.defaultTime : '09:00');
-      return;
-    }
-    const grp = UNIT_GROUPS[type] || UNIT_GROUPS.length;
-    const keys = Object.keys(grp.units);
-    setFromUnit(typeof tool.spec?.from === 'string' && grp.units[tool.spec.from] ? tool.spec.from : keys[1] || keys[0]);
-    setTargetUnit(typeof tool.spec?.to === 'string' && grp.units[tool.spec.to] ? tool.spec.to : keys[0]);
-    setInputValue(typeof tool.spec?.defaultVal === 'number' ? tool.spec.defaultVal : 100);
-  }, [tool]);
+    return 'up-pucca';
+  });
+  const [landValue, setLandValue] = useState<number>(() => {
+    if (tool.slug.includes('acre')) return 1;
+    if (typeof tool.spec?.defaultVal === 'number') return tool.spec.defaultVal;
+    return 1;
+  });
+  const [landFromKey, setLandFromKey] = useState<string>(() => {
+    const s = tool.slug.toLowerCase();
+    if (s.includes('cent-to') || s.startsWith('cent')) return 'cent';
+    if (s.includes('ground-to') || s.startsWith('ground')) return 'ground';
+    if (s.includes('bigha-to') || s.startsWith('bigha')) return 'bigha';
+    if (s.includes('guntha-to') || s.startsWith('guntha')) return 'guntha';
+    if (s.includes('hectare-to') || s.startsWith('hectare')) return 'hectare';
+    if (s.includes('sq-feet') || s.includes('sq-ft') || s.includes('sqft')) return 'sqft';
+    if (s.includes('acre')) return 'acre';
+    return 'acre';
+  });
+  const [plotWidthFt, setPlotWidthFt] = useState<number>(40);
+  const [plotLengthFt, setPlotLengthFt] = useState<number>(60);
 
   const toBaseValue = (val: number, unit: string): number => {
     const factor = group.units[unit];
@@ -521,6 +565,170 @@ export default function ConverterEngine({ tool }: { tool: ToolDef }) {
                 <div className="text-base font-mono font-bold text-neutral-900 dark:text-white mt-0.5">{conv.ampm}</div>
                 <div className="text-[10px] text-neutral-400">{conv.hhmm} &bull; {conv.dayShift}</div>
               </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (detectedType === 'area') {
+    const activeState = BIGHA_STATES.find((s) => s.id === bighaStateId) || BIGHA_STATES[0];
+    const landUnits: Array<{ key: string; label: string; sqFtFactor: number; hint: string }> = [
+      { key: 'sqft', label: 'Square Feet (Sq. Ft.)', sqFtFactor: 1, hint: 'Base standard' },
+      { key: 'sqm', label: 'Square Meters (Sq. m)', sqFtFactor: 10.7639104167, hint: 'Metric SI' },
+      { key: 'acre', label: 'Acres', sqFtFactor: 43560, hint: '43,560 sq ft' },
+      { key: 'hectare', label: 'Hectares', sqFtFactor: 107639.104167, hint: '10,000 sq m' },
+      { key: 'cent', label: 'Cents', sqFtFactor: 435.6, hint: '1/100 Acre' },
+      { key: 'ground', label: 'Grounds', sqFtFactor: 2400, hint: '2,400 sq ft (TN)' },
+      { key: 'ankanam', label: 'Ankanam', sqFtFactor: 72, hint: '72 sq ft (AP/TS)' },
+      { key: 'guntha', label: 'Guntha / Gunta', sqFtFactor: 1089, hint: '1,089 sq ft (MH/KA/GJ)' },
+      { key: 'bigha', label: `Bigha (${activeState.label.split(' (')[0]})`, sqFtFactor: activeState.sqFtPerBigha, hint: `${activeState.sqFtPerBigha.toLocaleString()} sq ft` },
+      { key: 'kanal', label: 'Kanal', sqFtFactor: 5445, hint: '5,445 sq ft (North India)' },
+      { key: 'marla', label: 'Marla', sqFtFactor: 272.25, hint: '272.25 sq ft (1/20 Kanal)' },
+      { key: 'katha', label: `Katha (${activeState.label.split(' (')[0]})`, sqFtFactor: activeState.sqFtPerKatha, hint: `${activeState.sqFtPerKatha.toLocaleString()} sq ft` },
+    ];
+
+    const fromUnitObj = landUnits.find((u) => u.key === landFromKey) || landUnits[2];
+    const totalSqFt = (Number.isFinite(landValue) ? landValue : 0) * fromUnitObj.sqFtFactor;
+    const sqSideFt = Math.sqrt(Math.max(0, totalSqFt));
+    const sqSideM = Math.sqrt(Math.max(0, totalSqFt * SQM_PER_SQFT));
+    const centsVal = totalSqFt / 435.6;
+    const groundsVal = totalSqFt / 2400;
+
+    return (
+      <div className="p-5 sm:p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-4">
+          <div>
+            <h2 className="text-lg sm:text-xl font-black text-neutral-900 dark:text-white">
+              Unified Indian Land &amp; Area Conversion Matrix
+            </h2>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Convert simultaneously across Sq Ft, Cents, Grounds, Acres, Guntha, Kanal, Marla, Katha &amp; state-wise Bigha.
+            </p>
+          </div>
+          <div className="w-full md:w-72">
+            <label className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
+              Bigha / Katha State Standard
+            </label>
+            <select
+              value={bighaStateId}
+              onChange={(e) => setBighaStateId(e.target.value)}
+              aria-label="Select state Bigha standard"
+              className="w-full min-h-[44px] px-3 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 text-xs font-bold text-neutral-900 dark:text-white cursor-pointer"
+            >
+              {BIGHA_STATES.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Top Input Panel */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800">
+          <div>
+            <label className="block text-xs font-semibold text-neutral-500 mb-1.5">Area Value</label>
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={landValue}
+              onChange={(e) => setLandValue(parseFloat(e.target.value) || 0)}
+              className="w-full min-h-[48px] px-4 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-2xl font-mono font-bold text-neutral-900 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-neutral-500 mb-1.5">Input Unit</label>
+            <select
+              value={landFromKey}
+              onChange={(e) => setLandFromKey(e.target.value)}
+              className="w-full min-h-[48px] px-4 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm font-bold text-neutral-900 dark:text-white cursor-pointer"
+            >
+              {landUnits.map((u) => (
+                <option key={u.key} value={u.key}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Live Plot Dimension Equivalency Banner */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-500/30 space-y-3">
+          <div className="text-sm sm:text-base font-extrabold text-emerald-900 dark:text-emerald-200">
+            {landValue.toLocaleString()} {fromUnitObj.label} ={' '}
+            {Math.round(totalSqFt).toLocaleString()} Sq. Ft. &asymp;{' '}
+            {Number(centsVal.toFixed(2)).toLocaleString()} Cents &asymp;{' '}
+            {Number(groundsVal.toFixed(2)).toLocaleString()} Grounds
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-700 dark:text-neutral-300">
+            <span>
+              Equivalent square plot dimensions:{' '}
+              <strong className="font-mono">
+                {sqSideFt.toFixed(1)} ft &times; {sqSideFt.toFixed(1)} ft
+              </strong>{' '}
+              ({sqSideM.toFixed(1)} m &times; {sqSideM.toFixed(1)} m)
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-neutral-500">Custom Plot:</span>
+              <input
+                type="number"
+                min={1}
+                value={plotWidthFt}
+                onChange={(e) => setPlotWidthFt(Number(e.target.value) || 0)}
+                aria-label="Plot width in feet"
+                className="w-20 min-h-[36px] px-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 font-mono text-center"
+              />
+              <span>&times;</span>
+              <input
+                type="number"
+                min={1}
+                value={plotLengthFt}
+                onChange={(e) => setPlotLengthFt(Number(e.target.value) || 0)}
+                aria-label="Plot length in feet"
+                className="w-20 min-h-[36px] px-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 font-mono text-center"
+              />
+              <span>ft</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setLandFromKey('sqft');
+                  setLandValue(plotWidthFt * plotLengthFt);
+                }}
+                className="min-h-[36px] px-3 rounded-lg bg-emerald-600 text-white font-bold cursor-pointer hover:bg-emerald-700 transition"
+              >
+                Apply {(plotWidthFt * plotLengthFt).toLocaleString()} Sq Ft
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Simultaneous All-Unit Conversion Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {landUnits.map((u) => {
+            const outVal = formatNum(totalSqFt / u.sqFtFactor);
+            const isSelected = u.key === landFromKey;
+            return (
+              <button
+                key={u.key}
+                type="button"
+                onClick={() => handleCopy(`${outVal} ${u.label}`, `land-${u.key}`)}
+                className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
+                  isSelected
+                    ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30'
+                    : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/40 hover:border-blue-400'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[11px] text-neutral-500 mb-1">
+                  <span className="font-bold text-neutral-700 dark:text-neutral-200">{u.label}</span>
+                  <span>{copiedKey === `land-${u.key}` ? 'Copied!' : u.hint}</span>
+                </div>
+                <div className="text-xl font-mono font-extrabold text-neutral-900 dark:text-white truncate">
+                  {outVal}
+                </div>
+              </button>
             );
           })}
         </div>

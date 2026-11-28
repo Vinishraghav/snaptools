@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { PDFDocument } from 'pdf-lib';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   PenTool,
   Type,
@@ -10,9 +9,16 @@ import {
   Download,
   FileUp,
   CheckCircle2,
+  Workflow,
 } from 'lucide-react';
 import { triggerBlobDownload } from '@/lib/pdfStudios';
 import AdSlot from '@/components/ads/AdSlot';
+import { useWorkflowStore } from '@/lib/workflowStore';
+import { EXAM_IMAGE_PRESETS } from '@/lib/examPresets';
+
+const SIGNATURE_PORTAL_PRESETS = EXAM_IMAGE_PRESETS.filter(
+  (p) => p.id.includes('sign')
+);
 
 interface Stroke {
   color: string;
@@ -41,14 +47,49 @@ export default function SignatureStudio() {
 
   const [typedName, setTypedName] = useState('Aarav Krishnan');
   const [typedFontIdx, setTypedFontIdx] = useState(0);
+  const [exportPresetId, setExportPresetId] = useState<string>('');
 
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const { payload, markConsumed } = useWorkflowStore();
+  const pipedPdf = useMemo(
+    () =>
+      payload?.files.find(
+        (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name)
+      ) ?? null,
+    [payload]
+  );
+
+  const [pdfFile, setPdfFile] = useState<File | null>(() => pipedPdf);
   const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
   const [pdfPages, setPdfPages] = useState(1);
   const [targetPage, setTargetPage] = useState(1);
   const [placement, setPlacement] = useState<PlacementPreset>('bottom-right');
   const [sigWidthPct, setSigWidthPct] = useState(26);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pipedPdf) return;
+    let active = true;
+    (async () => {
+      try {
+        const raw = new Uint8Array(await pipedPdf.arrayBuffer());
+        const { PDFDocument } = await import('pdf-lib');
+        const doc = await PDFDocument.load(raw, { ignoreEncryption: true });
+        if (!active) return;
+        setPdfFile(pipedPdf);
+        setPdfBytes(raw);
+        setPdfPages(doc.getPageCount());
+        setTargetPage(doc.getPageCount());
+        setStatusMsg(`Loaded piped PDF "${pipedPdf.name}" (${doc.getPageCount()} pages)`);
+        if (payload?.id) markConsumed(payload.id);
+      } catch {
+        // ignore invalid piped file
+      }
+    })();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const strokesRef = useRef<Stroke[]>([]);
@@ -164,6 +205,55 @@ export default function SignatureStudio() {
   };
 
   const downloadSignaturePng = async () => {
+    const preset = SIGNATURE_PORTAL_PRESETS.find((p) => p.id === exportPresetId);
+    if (preset) {
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = preset.width;
+      outCanvas.height = preset.height;
+      const octx = outCanvas.getContext('2d');
+      if (!octx) return;
+      octx.fillStyle = '#ffffff';
+      octx.fillRect(0, 0, preset.width, preset.height);
+
+      const srcBytes = await buildSignaturePngBytes();
+      if (!srcBytes) {
+        setStatusMsg('Draw or enter a signature first!');
+        return;
+      }
+      const imgUrl = URL.createObjectURL(new Blob([new Uint8Array(srcBytes)], { type: 'image/png' }));
+      const img = await new Promise<HTMLImageElement>((resolve) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.src = imgUrl;
+      });
+      URL.revokeObjectURL(imgUrl);
+
+      octx.drawImage(img, 0, 0, preset.width, preset.height);
+      const encodeJpg = (q: number) =>
+        new Promise<Blob | null>((r) => outCanvas.toBlob(r, 'image/jpeg', q));
+      let blob = await encodeJpg(0.9);
+      let low = 0.08;
+      let high = 0.92;
+      for (let i = 0; i < 8 && blob && blob.size > preset.targetKb * 1024; i++) {
+        const mid = (low + high) / 2;
+        const cand = await encodeJpg(mid);
+        if (cand && cand.size <= preset.targetKb * 1024) {
+          blob = cand;
+          low = mid;
+        } else {
+          high = mid;
+        }
+      }
+      if (!blob) return;
+      const outBytes = new Uint8Array(await blob.arrayBuffer());
+      triggerBlobDownload(outBytes, `${preset.id}.jpg`, 'image/jpeg');
+      setStatusMsg(
+        `Downloaded ${preset.portal} signature (${preset.width}x${preset.height}px, ${(outBytes.byteLength / 1024).toFixed(1)} KB)!`
+      );
+      setTimeout(() => setStatusMsg(null), 4000);
+      return;
+    }
+
     const bytes = await buildSignaturePngBytes();
     if (!bytes) {
       setStatusMsg('Draw or enter a signature first!');
@@ -179,6 +269,7 @@ export default function SignatureStudio() {
     if (!file) return;
     try {
       const raw = new Uint8Array(await file.arrayBuffer());
+      const { PDFDocument } = await import('pdf-lib');
       const doc = await PDFDocument.load(raw, { ignoreEncryption: true });
       setPdfFile(file);
       setPdfBytes(raw);
@@ -198,6 +289,7 @@ export default function SignatureStudio() {
       return;
     }
 
+    const { PDFDocument } = await import('pdf-lib');
     const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
     const sigImage = await doc.embedPng(sigPng);
     const pageIndex = Math.max(0, Math.min(doc.getPageCount() - 1, targetPage - 1));
@@ -398,19 +490,40 @@ export default function SignatureStudio() {
             </div>
           )}
 
-          <button
-            onClick={downloadSignaturePng}
-            className="w-full py-3 px-4 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer hover:opacity-90 transition"
-          >
-            <Download className="w-4 h-4" /> Download Transparent PNG Signature
-          </button>
+          <div className="space-y-2.5 pt-1">
+            <select
+              value={exportPresetId}
+              onChange={(e) => setExportPresetId(e.target.value)}
+              aria-label="Signature export preset"
+              className="w-full min-h-[44px] px-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 text-xs font-semibold"
+            >
+              <option value="">Transparent PNG (Default 640x220px)</option>
+              {SIGNATURE_PORTAL_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={downloadSignaturePng}
+              className="w-full min-h-[44px] py-3 px-4 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer hover:opacity-90 transition"
+            >
+              <Download className="w-4 h-4" />{' '}
+              {exportPresetId ? 'Download Exam Portal JPG Signature' : 'Download Transparent PNG Signature'}
+            </button>
+          </div>
         </div>
 
         {/* Right: Stamp onto PDF */}
         <div className="lg:col-span-5 space-y-5 rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 sm:p-6">
           <div>
-            <h2 className="text-base font-black text-neutral-900 dark:text-white">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white flex items-center gap-2">
               Stamp Signature Directly Onto PDF
+              {pipedPdf && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">
+                  <Workflow className="w-3 h-3" /> Piped PDF Loaded
+                </span>
+              )}
             </h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
               Optional: drop any contract or form PDF below and place your signature directly inside browser memory.

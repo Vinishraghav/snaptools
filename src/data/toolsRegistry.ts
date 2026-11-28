@@ -1,6 +1,7 @@
 import coreToolsRaw from './coreTools.json';
 import { CATEGORIES } from './categories';
 import { buildAllTools, ToolEngine, ToolSpec } from './expandedToolsBuilder';
+import { getToolBenefitDescription } from '@/lib/toolDescriptions';
 
 export type { ToolEngine, ToolSpec };
 
@@ -39,14 +40,20 @@ const EMPTY_FAQS: ToolFAQ[] = [];
 
 export const TOOLS_REGISTRY: ToolDef[] = compactSeeds.map((seed) => {
   const categoryName = CATEGORY_NAME_MAP.get(seed.category) || 'General Utilities';
+  const normalizedEngine: ToolEngine =
+    /(?:^|-)(cent|cents|ground|grounds|bigha|guntha|kanal|marla|katha|ankanam|ankadam)(?:-|$)|land-area/i.test(
+      seed.slug
+    )
+      ? 'converter'
+      : seed.engine;
   return {
     id: seed.id,
     slug: seed.slug,
     title: seed.title,
     category: seed.category,
     categoryName,
-    description: `Free client-side ${seed.title}. Runs 100% locally inside your browser with instant results and zero uploads.`,
-    engine: seed.engine,
+    description: getToolBenefitDescription(seed.title, seed.slug, seed.category),
+    engine: normalizedEngine,
     spec: seed.spec,
     features: EMPTY_STRINGS,
     howToUse: EMPTY_STRINGS,
@@ -77,7 +84,7 @@ function hydrateToolDetails(base: ToolDef): ToolDef {
 
   return {
     ...base,
-    description: `Use our free, client-side ${title} for instant, accurate results directly in your browser without any sign-up or server file uploads.`,
+    description: getToolBenefitDescription(title, base.slug, base.category),
     features: [
       `100% Free & Client-Side: Run ${lowerTitle} directly in your browser with zero server round-trips.`,
       `Privacy First Guarantee: Files and personal values never leave your device memory.`,

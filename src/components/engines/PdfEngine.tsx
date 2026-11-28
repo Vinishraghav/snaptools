@@ -1,129 +1,71 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ToolDef } from '@/data/toolsRegistry';
-import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
 import {
-  Upload,
-  Download,
   FileText,
+  Download,
+  Lock,
+  Image as ImageIcon,
+  Type,
+  Sparkles,
   CheckCircle2,
   AlertCircle,
+  Loader2,
+  Copy,
   RefreshCw,
-  Layers,
-  Image as ImageIcon,
 } from 'lucide-react';
+import SmartDropzone, { BatchQueueRow, formatBytesCompact } from '@/components/tools/SmartDropzone';
+import WorkflowChainBar from '@/components/tools/WorkflowChainBar';
+import { useWorkflowStore } from '@/lib/workflowStore';
+import { PDF_PORTAL_PRESETS } from '@/lib/examPresets';
+import { createZipBlob } from '@/lib/imageWorkerPool';
 
 type PdfMode =
+  | 'merge'
+  | 'split'
+  | 'rotate'
+  | 'watermark'
+  | 'page-numbers'
   | 'images-to-pdf'
-  | 'structured-generator'
-  | 'text-generator'
-  | 'template-generator'
-  | 'pdf-file';
+  | 'pdf-to-image'
+  | 'pdf-to-text'
+  | 'compress'
+  | 'encrypt'
+  | 'metadata'
+  | 'generate';
 
-const PAPER_SIZES: Record<string, { label: string; dims: [number, number] }> = {
-  a0: { label: 'A0 Portrait', dims: [2383.94, 3370.39] },
-  a1: { label: 'A1 Portrait', dims: [1683.78, 2383.94] },
-  a2: { label: 'A2 Portrait', dims: [1190.55, 1683.78] },
-  a3: { label: 'A3 Portrait', dims: [841.89, 1190.55] },
-  a4: { label: 'A4 Portrait (Standard)', dims: [595.28, 841.89] },
-  a5: { label: 'A5 Portrait', dims: [419.53, 595.28] },
-  a6: { label: 'A6 Portrait', dims: [297.64, 419.53] },
-  b4: { label: 'B4 JIS', dims: [708.66, 1000.63] },
-  b5: { label: 'B5 JIS', dims: [498.9, 708.66] },
-  letter: { label: 'US Letter', dims: [612, 792] },
-  legal: { label: 'US Legal', dims: [612, 1008] },
-  tabloid: { label: 'Tabloid (11x17)', dims: [792, 1224] },
-  executive: { label: 'Executive', dims: [522, 756] },
+interface PdfQueueEntry {
+  id: string;
+  file: File;
+  status: 'pending' | 'processing' | 'done' | 'error';
+  outputBlob?: Blob;
+  downloadUrl?: string;
+  downloadName?: string;
+  previewUrl?: string;
+  extraBadge?: string;
+  error?: string;
+}
+
+const PAPER_DIMS: Record<string, [number, number]> = {
+  a4: [595.28, 841.89],
+  letter: [612, 792],
+  legal: [612, 1008],
 };
 
-function detectPdfMode(slug: string, spec?: Record<string, unknown>): PdfMode {
-  if (
-    slug.includes('images-to-pdf') ||
-    slug.includes('image-to-pdf') ||
-    slug.includes('jpg-to-pdf') ||
-    slug.includes('png-to-pdf')
-  ) {
-    return 'images-to-pdf';
-  }
-  if (
-    slug.includes('invoice') ||
-    slug.includes('receipt') ||
-    slug.includes('certificate') ||
-    slug.includes('purchase-order') ||
-    slug.includes('ticket') ||
-    slug.includes('quotation') ||
-    slug.includes('delivery-challan')
-  ) {
-    return 'structured-generator';
-  }
-  if (
-    slug.includes('text-to-pdf') ||
-    slug.includes('html-to-pdf') ||
-    slug.includes('markdown-to-pdf') ||
-    slug.includes('text-to-handwriting') ||
-    slug.includes('resume') ||
-    slug.includes('cover-letter') ||
-    slug.includes('travel-itinerary')
-  ) {
-    return 'text-generator';
-  }
-  if (
-    typeof spec?.gridSize === 'number' ||
-    slug.includes('cornell-note') ||
-    slug.includes('graph-paper') ||
-    slug.includes('lined-paper') ||
-    slug.includes('dot-grid') ||
-    slug.includes('music-sheet') ||
-    slug.includes('calligraphy')
-  ) {
-    return 'template-generator';
-  }
-  return 'pdf-file';
-}
-
-function getDefaultTextForSlug(slug: string, title: string): string {
-  if (slug.includes('html')) {
-    return '<h1>Project Report</h1>\n<p>Generated 100% locally in your browser with SnapTools.</p>\n<ul>\n  <li>Zero server uploads</li>\n  <li>Instant conversion</li>\n</ul>';
-  }
-  if (slug.includes('markdown')) {
-    return '# Document Title\n\nThis PDF was compiled from Markdown directly inside browser memory.\n\n## Highlights\n- Complete client-side privacy\n- Clean typography & pagination';
-  }
-  if (slug.includes('resume')) {
-    return 'ALEXANDER CHEN\nSenior Software Engineer | San Francisco, CA\n\nSUMMARY\nExperienced full-stack engineer focused on high-performance web applications.\n\nEXPERIENCE\n- Lead Frontend Architect (2022 - Present)\n- Software Engineer (2019 - 2022)';
-  }
-  if (slug.includes('cover-letter')) {
-    return 'Dear Hiring Manager,\n\nI am writing to express my strong interest in joining your engineering team. With deep expertise in modern web architecture and performance optimization, I am excited to contribute from day one.\n\nSincerely,\nYour Name';
-  }
-  return `Sample content for ${title}.\n\nReplace or edit this text to generate a multi-line paginated PDF document completely inside your browser with zero server uploads.`;
-}
-
-function parsePageIndices(rangeStr: string, totalPages: number): number[] {
-  const indices: number[] = [];
-  const parts = rangeStr.split(',');
-  for (const raw of parts) {
-    const part = raw.trim();
-    if (!part) continue;
-    if (part.includes('-')) {
-      const [startStr, endStr] = part.split('-');
-      const start = Math.max(1, parseInt(startStr, 10) || 1);
-      const end = Math.min(totalPages, parseInt(endStr, 10) || totalPages);
-      for (let p = start; p <= end; p++) {
-        indices.push(p - 1);
-      }
-    } else {
-      const p = parseInt(part, 10);
-      if (p >= 1 && p <= totalPages) {
-        indices.push(p - 1);
-      }
-    }
-  }
-  return Array.from(new Set(indices));
+function toWinAnsiSafe(input: string): string {
+  return input
+    .replace(/\u20B9/g, 'Rs.')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2013|\u2014/g, '-')
+    .replace(/\u2022/g, '*')
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
 }
 
 function wrapLines(text: string, maxChars: number): string[] {
   const out: string[] = [];
-  for (const rawLine of text.split(/\r?\n/)) {
+  for (const rawLine of toWinAnsiSafe(text).split(/\r?\n/)) {
     if (rawLine.length <= maxChars) {
       out.push(rawLine);
       continue;
@@ -143,928 +85,977 @@ function wrapLines(text: string, maxChars: number): string[] {
   return out.length > 0 ? out : [''];
 }
 
-async function fileToPngBytesViaCanvas(file: File): Promise<Uint8Array> {
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
-    reader.readAsDataURL(file);
-  });
+function parsePageSelection(spec: string, totalPages: number): number[] {
+  const indices: number[] = [];
+  for (const rawPart of spec.split(',')) {
+    const part = rawPart.trim();
+    if (!part) continue;
+    if (part.includes('-')) {
+      const [sStr, eStr] = part.split('-');
+      const s = Math.max(1, parseInt(sStr, 10) || 1);
+      const e = Math.min(totalPages, parseInt(eStr, 10) || totalPages);
+      for (let p = Math.min(s, e); p <= Math.max(s, e); p++) indices.push(p - 1);
+    } else {
+      const p = parseInt(part, 10);
+      if (!Number.isNaN(p) && p >= 1 && p <= totalPages) indices.push(p - 1);
+    }
+  }
+  return Array.from(new Set(indices));
+}
 
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const el = new Image();
-    el.onload = () => resolve(el);
-    el.onerror = () => reject(new Error(`Unsupported image format: ${file.name}`));
-    el.src = dataUrl;
-  });
+function detectPdfMode(slug: string, spec: Record<string, unknown>): PdfMode {
+  const s = slug.toLowerCase();
+  if (s.includes('images-to-pdf') || s.includes('jpg-to-pdf') || s.includes('png-to-pdf') || s.includes('webp-to-pdf')) {
+    return 'images-to-pdf';
+  }
+  if (s.includes('pdf-to-jpg') || s.includes('pdf-to-png') || s.includes('pdf-to-webp') || s.includes('pdf-to-image')) {
+    return 'pdf-to-image';
+  }
+  if (s.includes('plain-text') || s.includes('pdf-to-text') || s.includes('extract-text')) {
+    return 'pdf-to-text';
+  }
+  if (s.includes('password') || s.includes('protect') || s.includes('encrypt') || s.includes('lock-pdf')) {
+    return 'encrypt';
+  }
+  if (s.includes('merge') || s.includes('join') || s.includes('combine')) return 'merge';
+  if (s.includes('split') || s.includes('delete-page') || s.includes('remove-page') || s.includes('extract-page') || s.includes('odd-even')) {
+    return 'split';
+  }
+  if (s.includes('rotate')) return 'rotate';
+  if (s.includes('watermark')) return 'watermark';
+  if (s.includes('page-number') || s.includes('numbering')) return 'page-numbers';
+  if (s.includes('metadata') || s.includes('properties')) return 'metadata';
+  if (s.includes('compress') || s.includes('reduce') || s.includes('shrink') || typeof spec.targetKb === 'number') {
+    return 'compress';
+  }
+  if (s.includes('create-') || s.includes('generator') || s.includes('maker') || s.includes('text-to-pdf') || s.includes('invoice')) {
+    return 'generate';
+  }
+  return 'compress';
+}
 
-  const canvas = document.createElement('canvas');
-  canvas.width = img.naturalWidth || img.width;
-  canvas.height = img.naturalHeight || img.height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D context unavailable');
-  ctx.drawImage(img, 0, 0);
-
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, 'image/png')
-  );
-  if (!blob) throw new Error(`Failed converting ${file.name} to PNG`);
-  return new Uint8Array(await blob.arrayBuffer());
+async function fileToPngBytes(file: File): Promise<Uint8Array> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error(`Unable to decode ${file.name}`));
+      el.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas unavailable');
+    ctx.drawImage(img, 0, 0);
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error(`Failed encoding ${file.name}`);
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export default function PdfEngine({ tool }: { tool: ToolDef }) {
+  const slug = tool.slug.toLowerCase();
   const spec = (tool.spec ?? {}) as Record<string, unknown>;
+  const mode = detectPdfMode(slug, spec);
+  const { payload, markConsumed, pipeToTool } = useWorkflowStore();
+
+  const isSplitOrDelete = mode === 'split';
+  const isImagesToPdf = mode === 'images-to-pdf';
   const specTargetKb = typeof spec.targetKb === 'number' ? spec.targetKb : 200;
-  const specGridSize = typeof spec.gridSize === 'number' ? spec.gridSize : 18;
-  const specPaper = (
-    typeof spec.paperSize === 'string'
-      ? spec.paperSize
-      : typeof spec.resizePaper === 'string'
-        ? spec.resizePaper
-        : 'a4'
-  ).toLowerCase();
 
-  const mode = detectPdfMode(tool.slug, spec);
-  const isMerge = tool.slug.includes('merge') || tool.slug.includes('join');
-  const isCompressor = typeof spec.targetKb === 'number' || tool.slug.includes('compress');
-  const isSplitOrDelete =
-    tool.slug.includes('split') ||
-    tool.slug.includes('delete') ||
-    tool.slug.includes('extract') ||
-    tool.slug.includes('odd-even');
+  const initialFiles = useMemo(() => {
+    if (!payload || payload.files.length === 0) return [];
+    if (isImagesToPdf) {
+      return payload.files.filter(
+        (f) => f.type.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(f.name)
+      );
+    }
+    return payload.files.filter(
+      (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name)
+    );
+  }, [payload, isImagesToPdf]);
 
-  const [files, setFiles] = useState<File[]>([]);
-  const [processing, setProcessing] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadName, setDownloadName] = useState<string>('output.pdf');
+  const [entries, setEntries] = useState<PdfQueueEntry[]>(() =>
+    initialFiles.map((file, idx) => ({
+      id: `init_${idx}_${file.name}`,
+      file,
+      status: 'pending',
+    }))
+  );
+
+  // Generated multi-page or standalone outputs (for Merge, Images-to-PDF, PDF->JPG, Generate)
+  const [generatedResults, setGeneratedResults] = useState<PdfQueueEntry[]>([]);
+  const [extractedText, setExtractedText] = useState<string>('');
+  const [processing, setProcessing] = useState<boolean>(false);
+  const [zipBusy, setZipBusy] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // Feature-specific controls
-  const [watermarkText, setWatermarkText] = useState('CONFIDENTIAL');
-  const [rotationAngle, setRotationAngle] = useState(90);
+  // Mode controls
   const [targetKb, setTargetKb] = useState<number>(specTargetKb);
   const [pageRange, setPageRange] = useState<string>('1-2');
-  const [oddEvenMode, setOddEvenMode] = useState<'odd' | 'even'>('odd');
-  const [imagePageSize, setImagePageSize] = useState<string>(PAPER_SIZES[specPaper] ? specPaper : 'a4');
-  const [imageMargin, setImageMargin] = useState<number>(20);
-  const [metaTitle, setMetaTitle] = useState('SnapTools Document');
-  const [metaAuthor, setMetaAuthor] = useState('SnapTools User');
-
-  // Generator controls
-  const [invoiceName, setInvoiceName] = useState('Acme Corp');
-  const [invoiceAmount, setInvoiceAmount] = useState('1500');
-  const [invoiceClient, setInvoiceClient] = useState('John Doe');
-  const [docTitle, setDocTitle] = useState(tool.title);
-  const [docBody, setDocBody] = useState(() =>
-    getDefaultTextForSlug(tool.slug, tool.title)
+  const [removeSelected, setRemoveSelected] = useState<boolean>(
+    slug.includes('delete') || slug.includes('remove')
   );
-  const [templateGridSize, setTemplateGridSize] = useState<number>(specGridSize);
+  const [rotationAngle, setRotationAngle] = useState<number>(90);
+  const [watermarkText, setWatermarkText] = useState<string>('CONFIDENTIAL');
+  const [userPassword, setUserPassword] = useState<string>('');
+  const [ownerPassword, setOwnerPassword] = useState<string>('');
+  const [imagePaper, setImagePaper] = useState<string>('a4');
+  const [imageFormatOut, setImageFormatOut] = useState<'image/jpeg' | 'image/png'>(
+    slug.includes('png') ? 'image/png' : 'image/jpeg'
+  );
+  const [renderScale, setRenderScale] = useState<number>(1.75);
+  const [metaTitle, setMetaTitle] = useState<string>('SnapTools Document');
+  const [metaAuthor, setMetaAuthor] = useState<string>('SnapTools User');
+  const [docTitle, setDocTitle] = useState<string>(tool.title);
+  const [docBody, setDocBody] = useState<string>(
+    'Generated 100% locally inside browser memory with SnapTools.\nZero server uploads.\n\nEnter your custom lines below and export instantly as PDF.'
+  );
+
+  const urlsRef = useRef<string[]>([]);
 
   useEffect(() => {
-    setFiles([]);
-    setDownloadUrl(null);
-    setStatusMessage('');
-    setErrorMessage('');
-    setDocTitle(tool.title);
-    setDocBody(getDefaultTextForSlug(tool.slug, tool.title));
-    setTargetKb(typeof spec.targetKb === 'number' ? spec.targetKb : 200);
-    setTemplateGridSize(typeof spec.gridSize === 'number' ? spec.gridSize : 18);
-    const nextPaper = (
-      typeof spec.paperSize === 'string'
-        ? spec.paperSize
-        : typeof spec.resizePaper === 'string'
-          ? spec.resizePaper
-          : 'a4'
-    ).toLowerCase();
-    setImagePageSize(PAPER_SIZES[nextPaper] ? nextPaper : 'a4');
-  }, [tool.slug, tool.title, spec.targetKb, spec.gridSize, spec.paperSize, spec.resizePaper]);
+    const urls = urlsRef.current;
+    return () => {
+      urls.forEach((u) => {
+        if (u.startsWith('blob:')) URL.revokeObjectURL(u);
+      });
+    };
+  }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFiles(Array.from(e.target.files));
-      setDownloadUrl(null);
-      setStatusMessage('');
-      setErrorMessage('');
+  useEffect(() => {
+    if (initialFiles.length > 0 && payload?.id) {
+      Promise.resolve().then(() => markConsumed(payload.id));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleFilesAdded = (incoming: File[], replace?: boolean) => {
+    const newEntries: PdfQueueEntry[] = incoming.map((file, i) => ({
+      id: `pdf_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+      file,
+      status: 'pending',
+    }));
+    setEntries((prev) => (replace ? newEntries : [...prev, ...newEntries]));
+    setGeneratedResults([]);
+    setExtractedText('');
+    setErrorMessage('');
+    setStatusMessage('');
   };
 
-  const handleProcessPdf = async () => {
+  const handleClearAll = () => {
+    setEntries([]);
+    setGeneratedResults([]);
+    setExtractedText('');
+    setErrorMessage('');
+    setStatusMessage('');
+  };
+
+  const makePdfBlob = (bytes: Uint8Array): Blob => {
+    const copy = new Uint8Array(bytes.byteLength);
+    copy.set(bytes);
+    return new Blob([copy.buffer], { type: 'application/pdf' });
+  };
+
+  const compressPdfAdaptive = async (rawBytes: Uint8Array, limitKb: number): Promise<Uint8Array> => {
+    const { PDFDocument } = await import('pdf-lib');
+    const srcDoc = await PDFDocument.load(rawBytes, { ignoreEncryption: true });
+    srcDoc.setTitle('');
+    srcDoc.setSubject('');
+    const compact = await srcDoc.save({ useObjectStreams: true });
+    if (limitKb <= 0 || compact.byteLength <= limitKb * 1024) {
+      return compact;
+    }
+
+    // Fallback: re-render PDF pages at tuned DPI + JPEG quality using pdfjs-dist so scanned docs fit strict govt KB limits
+    const pdfjs = await import('pdfjs-dist');
+    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    const loaded = await pdfjs.getDocument({ data: rawBytes.slice() }).promise;
+    const numPages = loaded.numPages;
+
+    const presets = [
+      { scale: 1.25, q: 0.72 },
+      { scale: 1.0, q: 0.56 },
+      { scale: 0.8, q: 0.42 },
+      { scale: 0.65, q: 0.32 },
+    ];
+
+    let bestBytes = compact;
+    for (const preset of presets) {
+      const rebuilt = await PDFDocument.create();
+      for (let p = 1; p <= numPages; p++) {
+        const page = await loaded.getPage(p);
+        const vp = page.getViewport({ scale: preset.scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.floor(vp.width));
+        canvas.height = Math.max(1, Math.floor(vp.height));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport: vp, canvas }).promise;
+        const jpgBlob = await new Promise<Blob | null>((r) =>
+          canvas.toBlob(r, 'image/jpeg', preset.q)
+        );
+        if (!jpgBlob) continue;
+        const jpgBytes = new Uint8Array(await jpgBlob.arrayBuffer());
+        const embedded = await rebuilt.embedJpg(jpgBytes);
+        const origVp = page.getViewport({ scale: 1 });
+        const outPage = rebuilt.addPage([origVp.width, origVp.height]);
+        outPage.drawImage(embedded, {
+          x: 0,
+          y: 0,
+          width: origVp.width,
+          height: origVp.height,
+        });
+      }
+      const attempt = await rebuilt.save({ useObjectStreams: true });
+      if (attempt.byteLength < bestBytes.byteLength) {
+        bestBytes = attempt;
+      }
+      if (bestBytes.byteLength <= limitKb * 1024) break;
+    }
+    return bestBytes;
+  };
+
+  const processPdf = async () => {
+    setErrorMessage('');
+    setStatusMessage('');
+    setExtractedText('');
+
+    if (mode !== 'generate' && entries.length === 0) {
+      setErrorMessage(
+        isImagesToPdf ? 'Add one or more images first.' : 'Drop or select at least one PDF file first.'
+      );
+      return;
+    }
+    if (mode === 'encrypt' && !userPassword.trim()) {
+      setErrorMessage('Enter a password to encrypt the PDF.');
+      return;
+    }
+
+    setProcessing(true);
     try {
-      setProcessing(true);
-      setErrorMessage('');
-      setStatusMessage('Processing locally in browser...');
+      const pdfLib = await import('pdf-lib');
+      const { PDFDocument, StandardFonts, rgb, degrees } = pdfLib;
 
-      // 1. Images to PDF Converter
-      if (mode === 'images-to-pdf') {
-        if (files.length === 0) {
-          setErrorMessage('Please select one or more images (PNG, JPG, WebP) first.');
-          return;
-        }
+      if (mode === 'generate') {
         const doc = await PDFDocument.create();
-        for (const file of files) {
-          const isJpg =
-            file.type === 'image/jpeg' || /\.(jpe?g)$/i.test(file.name);
-          const isPng = file.type === 'image/png' || /\.png$/i.test(file.name);
-          let embeddedImg;
-          if (isJpg) {
-            const bytes = await file.arrayBuffer();
-            embeddedImg = await doc.embedJpg(bytes);
-          } else if (isPng) {
-            const bytes = await file.arrayBuffer();
-            embeddedImg = await doc.embedPng(bytes);
-          } else {
-            const pngBytes = await fileToPngBytesViaCanvas(file);
-            embeddedImg = await doc.embedPng(pngBytes);
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+        let page = doc.addPage([595.28, 841.89]);
+        const { height } = page.getSize();
+        let y = height - 60;
+        page.drawText(toWinAnsiSafe(docTitle), { x: 48, y, size: 18, font: bold, color: rgb(0.1, 0.25, 0.65) });
+        y -= 30;
+        for (const line of wrapLines(docBody, 82)) {
+          if (y < 52) {
+            page = doc.addPage([595.28, 841.89]);
+            y = page.getSize().height - 52;
           }
+          if (line) page.drawText(line, { x: 48, y, size: 11, font, color: rgb(0.15, 0.15, 0.15) });
+          y -= 16;
+        }
+        const outBytes = await doc.save();
+        const blob = makePdfBlob(outBytes);
+        const url = URL.createObjectURL(blob);
+        urlsRef.current.push(url);
+        setGeneratedResults([
+          {
+            id: `gen_${Date.now()}`,
+            file: new File([blob], `${slug}.pdf`, { type: 'application/pdf' }),
+            status: 'done',
+            outputBlob: blob,
+            downloadUrl: url,
+            downloadName: `${slug}.pdf`,
+          },
+        ]);
+        setStatusMessage(`Generated ${slug}.pdf in browser memory.`);
+        return;
+      }
 
-          const { width: imgW, height: imgH } = embeddedImg.scale(1);
-          const preset = PAPER_SIZES[imagePageSize];
-          const pageW = preset ? preset.dims[0] : imgW + imageMargin * 2;
-          const pageH = preset ? preset.dims[1] : imgH + imageMargin * 2;
+      if (mode === 'merge') {
+        const merged = await PDFDocument.create();
+        for (const entry of entries) {
+          const bytes = new Uint8Array(await entry.file.arrayBuffer());
+          const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          const copied = await merged.copyPages(src, src.getPageIndices());
+          copied.forEach((p) => merged.addPage(p));
+        }
+        const outBytes = await merged.save();
+        const blob = makePdfBlob(outBytes);
+        const url = URL.createObjectURL(blob);
+        urlsRef.current.push(url);
+        const outName = `merged-${entries.length}-files.pdf`;
+        setGeneratedResults([
+          {
+            id: `merge_${Date.now()}`,
+            file: new File([blob], outName, { type: 'application/pdf' }),
+            status: 'done',
+            outputBlob: blob,
+            downloadUrl: url,
+            downloadName: outName,
+            extraBadge: `${merged.getPageCount()} pages`,
+          },
+        ]);
+        setStatusMessage(`Merged ${entries.length} PDFs (${merged.getPageCount()} total pages).`);
+        return;
+      }
 
-          const page = doc.addPage([pageW, pageH]);
-          const availW = Math.max(10, pageW - imageMargin * 2);
-          const availH = Math.max(10, pageH - imageMargin * 2);
-          const scale =
-            imagePageSize === 'fit'
-              ? 1
-              : Math.min(availW / imgW, availH / imgH, 1);
-          const drawW = imgW * scale;
-          const drawH = imgH * scale;
-          page.drawImage(embeddedImg, {
-            x: (pageW - drawW) / 2,
-            y: (pageH - drawH) / 2,
+      if (mode === 'images-to-pdf') {
+        const doc = await PDFDocument.create();
+        const [pw, ph] = PAPER_DIMS[imagePaper] || PAPER_DIMS.a4;
+        const margin = 24;
+        for (const entry of entries) {
+          const raw = new Uint8Array(await entry.file.arrayBuffer());
+          const isJpg = /jpe?g$/i.test(entry.file.name) || entry.file.type === 'image/jpeg';
+          const embedded = isJpg
+            ? await doc.embedJpg(raw).catch(async () => doc.embedPng(await fileToPngBytes(entry.file)))
+            : await doc.embedPng(await fileToPngBytes(entry.file));
+          const page = doc.addPage([pw, ph]);
+          const maxW = pw - margin * 2;
+          const maxH = ph - margin * 2;
+          const scale = Math.min(maxW / embedded.width, maxH / embedded.height, 1);
+          const drawW = embedded.width * scale;
+          const drawH = embedded.height * scale;
+          page.drawImage(embedded, {
+            x: (pw - drawW) / 2,
+            y: (ph - drawH) / 2,
             width: drawW,
             height: drawH,
           });
         }
-
-        const pdfBytes = await doc.save();
-        const blob = new Blob([new Uint8Array(pdfBytes)], {
-          type: 'application/pdf',
-        });
-        setDownloadUrl(URL.createObjectURL(blob));
-        setDownloadName('images-combined.pdf');
-        setStatusMessage(
-          `Successfully converted ${files.length} image${files.length > 1 ? 's' : ''} into PDF (${(pdfBytes.length / 1024).toFixed(1)} KB)!`
-        );
+        const outBytes = await doc.save();
+        const blob = makePdfBlob(outBytes);
+        const url = URL.createObjectURL(blob);
+        urlsRef.current.push(url);
+        const outName = 'images-to-document.pdf';
+        setGeneratedResults([
+          {
+            id: `img2pdf_${Date.now()}`,
+            file: new File([blob], outName, { type: 'application/pdf' }),
+            status: 'done',
+            outputBlob: blob,
+            downloadUrl: url,
+            downloadName: outName,
+            extraBadge: `${doc.getPageCount()} pages`,
+          },
+        ]);
+        setStatusMessage(`Created PDF from ${entries.length} image(s) privately.`);
         return;
       }
 
-      // 2. Structured Invoice / Receipt / Certificate Generator
-      if (mode === 'structured-generator') {
-        const doc = await PDFDocument.create();
-        const page = doc.addPage([595.28, 841.89]);
-        const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
-        const fontReg = await doc.embedFont(StandardFonts.Helvetica);
-        const { height } = page.getSize();
+      if (mode === 'pdf-to-image') {
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        const raw = new Uint8Array(await entries[0].file.arrayBuffer());
+        const pdf = await pdfjs.getDocument({ data: raw }).promise;
+        const pageOutputs: PdfQueueEntry[] = [];
+        const stem = entries[0].file.name.replace(/\.pdf$/i, '') || 'page';
+        const ext = imageFormatOut === 'image/png' ? 'png' : 'jpg';
 
-        page.drawText(tool.title.toUpperCase(), {
-          x: 50,
-          y: height - 80,
-          size: 20,
-          font: fontBold,
-          color: rgb(0.1, 0.3, 0.8),
-        });
-        page.drawText(`Issued by: ${invoiceName}`, {
-          x: 50,
-          y: height - 130,
-          size: 13,
-          font: fontReg,
-          color: rgb(0.15, 0.15, 0.15),
-        });
-        page.drawText(`Recipient / Client: ${invoiceClient}`, {
-          x: 50,
-          y: height - 160,
-          size: 13,
-          font: fontReg,
-          color: rgb(0.15, 0.15, 0.15),
-        });
-        page.drawText(`Amount / Value: $${invoiceAmount}`, {
-          x: 50,
-          y: height - 195,
-          size: 15,
-          font: fontBold,
-          color: rgb(0.08, 0.5, 0.25),
-        });
-        page.drawText(`Date: ${new Date().toLocaleDateString()}`, {
-          x: 50,
-          y: height - 225,
-          size: 11,
-          font: fontReg,
-          color: rgb(0.4, 0.4, 0.4),
-        });
-        page.drawText('Generated securely 100% client-side with SnapTools.', {
-          x: 50,
-          y: 45,
-          size: 10,
-          font: fontReg,
-          color: rgb(0.55, 0.55, 0.55),
-        });
-
-        const pdfBytes = await doc.save();
-        const blob = new Blob([new Uint8Array(pdfBytes)], {
-          type: 'application/pdf',
-        });
-        setDownloadUrl(URL.createObjectURL(blob));
-        setDownloadName(`${tool.slug}.pdf`);
-        setStatusMessage('Document PDF generated successfully!');
-        return;
-      }
-
-      // 3. Text / HTML / Markdown / Resume / Letter PDF Generator
-      if (mode === 'text-generator') {
-        const doc = await PDFDocument.create();
-        const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
-        const fontReg = await doc.embedFont(StandardFonts.Helvetica);
-
-        const cleanBody = tool.slug.includes('html')
-          ? docBody.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ')
-          : docBody.replace(/^#+\s*/gm, '');
-
-        const [tW, tH] = PAPER_SIZES[imagePageSize]?.dims ?? [595.28, 841.89];
-        const lines = wrapLines(cleanBody, Math.max(36, Math.floor((tW - 100) / 6.2)));
-        let page = doc.addPage([tW, tH]);
-        let y = tH - 56;
-
-        page.drawText(docTitle || tool.title, {
-          x: 50,
-          y,
-          size: 18,
-          font: fontBold,
-          color: rgb(0.1, 0.25, 0.7),
-        });
-        y -= 32;
-
-        for (const line of lines) {
-          if (y < 55) {
-            page = doc.addPage([tW, tH]);
-            y = tH - 56;
-          }
-          if (line.trim()) {
-            page.drawText(line, {
-              x: 50,
-              y,
-              size: 11,
-              font: fontReg,
-              color: rgb(0.12, 0.12, 0.12),
-            });
-          }
-          y -= 17;
-        }
-
-        const pdfBytes = await doc.save();
-        const blob = new Blob([new Uint8Array(pdfBytes)], {
-          type: 'application/pdf',
-        });
-        setDownloadUrl(URL.createObjectURL(blob));
-        setDownloadName(`${tool.slug}.pdf`);
-        setStatusMessage(
-          `Generated ${doc.getPageCount()}-page PDF (${(pdfBytes.length / 1024).toFixed(1)} KB)!`
-        );
-        return;
-      }
-
-      // 4. Printable Note / Graph / Music / Calligraphy Template Generator
-      if (mode === 'template-generator') {
-        const doc = await PDFDocument.create();
-        const page = doc.addPage([595.28, 841.89]);
-        const { width, height } = page.getSize();
-        const step = Math.max(10, Math.min(40, templateGridSize));
-
-        if (tool.slug.includes('graph')) {
-          for (let x = 36; x <= width - 36; x += step) {
-            page.drawLine({
-              start: { x, y: 36 },
-              end: { x, y: height - 36 },
-              thickness: 0.5,
-              color: rgb(0.82, 0.85, 0.9),
-            });
-          }
-          for (let y = 36; y <= height - 36; y += step) {
-            page.drawLine({
-              start: { x: 36, y },
-              end: { x: width - 36, y },
-              thickness: 0.5,
-              color: rgb(0.82, 0.85, 0.9),
-            });
-          }
-        } else {
-          for (let y = 48; y <= height - 48; y += step) {
-            page.drawLine({
-              start: { x: 40, y },
-              end: { x: width - 40, y },
-              thickness: 0.6,
-              color: rgb(0.75, 0.78, 0.85),
-            });
-          }
-          if (tool.slug.includes('cornell')) {
-            page.drawLine({
-              start: { x: 185, y: 140 },
-              end: { x: 185, y: height - 48 },
-              thickness: 1.2,
-              color: rgb(0.3, 0.45, 0.75),
-            });
-            page.drawLine({
-              start: { x: 40, y: 140 },
-              end: { x: width - 40, y: 140 },
-              thickness: 1.2,
-              color: rgb(0.3, 0.45, 0.75),
-            });
-          }
-        }
-
-        const pdfBytes = await doc.save();
-        const blob = new Blob([new Uint8Array(pdfBytes)], {
-          type: 'application/pdf',
-        });
-        setDownloadUrl(URL.createObjectURL(blob));
-        setDownloadName(`${tool.slug}.pdf`);
-        setStatusMessage(`Printable A4 template PDF created!`);
-        return;
-      }
-
-      // 5. PDF File Operations
-      if (files.length === 0) {
-        setErrorMessage('Please select a PDF file first.');
-        return;
-      }
-
-      if (isMerge) {
-        const mergedDoc = await PDFDocument.create();
-        for (const file of files) {
-          const bytes = await file.arrayBuffer();
-          const doc = await PDFDocument.load(bytes);
-          const copiedPages = await mergedDoc.copyPages(doc, doc.getPageIndices());
-          copiedPages.forEach((p) => mergedDoc.addPage(p));
-        }
-        const pdfBytes = await mergedDoc.save();
-        const blob = new Blob([new Uint8Array(pdfBytes)], {
-          type: 'application/pdf',
-        });
-        setDownloadUrl(URL.createObjectURL(blob));
-        setDownloadName('merged-document.pdf');
-        setStatusMessage(`Successfully merged ${files.length} PDF files!`);
-      } else if (tool.slug.includes('watermark')) {
-        const bytes = await files[0].arrayBuffer();
-        const doc = await PDFDocument.load(bytes);
-        doc.getPages().forEach((page) => {
-          const { width, height } = page.getSize();
-          page.drawText(watermarkText, {
-            x: width / 4,
-            y: height / 2,
-            size: 42,
-            rotate: degrees(45),
-            color: rgb(0.8, 0.2, 0.2),
-            opacity: 0.35,
-          });
-        });
-        const pdfBytes = await doc.save();
-        const blob = new Blob([new Uint8Array(pdfBytes)], {
-          type: 'application/pdf',
-        });
-        setDownloadUrl(URL.createObjectURL(blob));
-        setDownloadName('watermarked.pdf');
-        setStatusMessage('Watermark applied to all pages!');
-      } else if (tool.slug.includes('rotat')) {
-        const bytes = await files[0].arrayBuffer();
-        const doc = await PDFDocument.load(bytes);
-        const pages = doc.getPages();
-        pages.forEach((page) => {
-          const currentRotation = page.getRotation().angle;
-          page.setRotation(degrees(currentRotation + rotationAngle));
-        });
-        const pdfBytes = await doc.save();
-        const blob = new Blob([new Uint8Array(pdfBytes)], {
-          type: 'application/pdf',
-        });
-        setDownloadUrl(URL.createObjectURL(blob));
-        setDownloadName('rotated.pdf');
-        setStatusMessage(`Rotated ${pages.length} pages by ${rotationAngle}°!`);
-      } else if (tool.slug.includes('numbering') || tool.slug.includes('bates')) {
-        const bytes = await files[0].arrayBuffer();
-        const doc = await PDFDocument.load(bytes);
-        const pages = doc.getPages();
-        pages.forEach((page, idx) => {
-          const { width } = page.getSize();
-          page.drawText(`Page ${idx + 1} of ${pages.length}`, {
-            x: width / 2 - 40,
-            y: 30,
-            size: 11,
-            color: rgb(0.3, 0.3, 0.3),
-          });
-        });
-        const pdfBytes = await doc.save();
-        const blob = new Blob([new Uint8Array(pdfBytes)], {
-          type: 'application/pdf',
-        });
-        setDownloadUrl(URL.createObjectURL(blob));
-        setDownloadName('numbered.pdf');
-        setStatusMessage('Page numbers added to all pages!');
-      } else if (isSplitOrDelete) {
-        const bytes = await files[0].arrayBuffer();
-        const doc = await PDFDocument.load(bytes);
-        const total = doc.getPageCount();
-        let keepIndices: number[] = [];
-
-        if (tool.slug.includes('odd-even')) {
-          keepIndices = doc
-            .getPageIndices()
-            .filter((idx) => (oddEvenMode === 'odd' ? idx % 2 === 0 : idx % 2 === 1));
-        } else if (tool.slug.includes('delete')) {
-          const deleteSet = new Set(parsePageIndices(pageRange, total));
-          keepIndices = doc.getPageIndices().filter((idx) => !deleteSet.has(idx));
-        } else {
-          keepIndices = parsePageIndices(pageRange, total);
-        }
-
-        if (keepIndices.length === 0) {
-          setErrorMessage(`No valid pages matched for ${total}-page PDF.`);
-          return;
-        }
-
-        const outDoc = await PDFDocument.create();
-        const copied = await outDoc.copyPages(doc, keepIndices);
-        copied.forEach((p) => outDoc.addPage(p));
-        const pdfBytes = await outDoc.save({ useObjectStreams: true });
-        const blob = new Blob([new Uint8Array(pdfBytes)], {
-          type: 'application/pdf',
-        });
-        setDownloadUrl(URL.createObjectURL(blob));
-        setDownloadName(`split-${files[0].name}`);
-        setStatusMessage(
-          `Extracted ${keepIndices.length} page${keepIndices.length > 1 ? 's' : ''} out of ${total}!`
-        );
-      } else {
-        const bytes = await files[0].arrayBuffer();
-        const doc = await PDFDocument.load(bytes);
-        const total = doc.getPageCount();
-
-        if (tool.slug.includes('reverse')) {
-          const revDoc = await PDFDocument.create();
-          for (let i = total - 1; i >= 0; i--) {
-            const [p] = await revDoc.copyPages(doc, [i]);
-            revDoc.addPage(p);
-          }
-          const pdfBytes = await revDoc.save();
-          const blob = new Blob([new Uint8Array(pdfBytes)], {
-            type: 'application/pdf',
-          });
-          setDownloadUrl(URL.createObjectURL(blob));
-          setDownloadName('reversed.pdf');
-          setStatusMessage(`Reversed order of all ${total} pages!`);
-        } else if (Boolean(spec.resizePaper) || tool.slug.includes('resize-to-')) {
-          const resizeKey =
-            (typeof spec.resizePaper === 'string' ? spec.resizePaper : '').toLowerCase() ||
-            (tool.slug.includes('letter') ? 'letter' : 'a4');
-          const paperEntry = PAPER_SIZES[resizeKey] ?? PAPER_SIZES.a4;
-          const [targetW, targetH] = paperEntry.dims;
-          const resizedDoc = await PDFDocument.create();
-          const embeddedPages = await resizedDoc.embedPages(doc.getPages());
-          for (const ep of embeddedPages) {
-            const scale = Math.min(targetW / ep.width, targetH / ep.height);
-            const p = resizedDoc.addPage([targetW, targetH]);
-            p.drawPage(ep, {
-              x: (targetW - ep.width * scale) / 2,
-              y: (targetH - ep.height * scale) / 2,
-              width: ep.width * scale,
-              height: ep.height * scale,
-            });
-          }
-          const pdfBytes = await resizedDoc.save();
-          const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
-          setDownloadUrl(URL.createObjectURL(blob));
-          setDownloadName(`resized-${resizeKey}.pdf`);
-          setStatusMessage(`Resized all ${total} pages to ${paperEntry.label}!`);
-        } else if (tool.slug.includes('metadata-editor')) {
-          doc.setTitle(metaTitle);
-          doc.setAuthor(metaAuthor);
-          doc.setCreator('SnapTools PDF Editor');
-          const pdfBytes = await doc.save();
-          const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
-          setDownloadUrl(URL.createObjectURL(blob));
-          setDownloadName(`updated-meta-${files[0].name}`);
-          setStatusMessage(`Updated PDF metadata Title="${metaTitle}" & Author="${metaAuthor}"!`);
-        } else if (tool.slug.includes('header-footer')) {
-          doc.getPages().forEach((page) => {
-            const { width, height } = page.getSize();
-            page.drawText(metaTitle || 'SnapTools Header', { x: 40, y: height - 28, size: 10, color: rgb(0.35, 0.35, 0.35) });
-            page.drawText(metaAuthor || 'SnapTools Footer', { x: 40, y: 20, size: 10, color: rgb(0.35, 0.35, 0.35) });
-          });
-          const pdfBytes = await doc.save();
-          const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
-          setDownloadUrl(URL.createObjectURL(blob));
-          setDownloadName(`header-footer-${files[0].name}`);
-          setStatusMessage(`Added custom header & footer to all ${total} pages!`);
-        } else {
-          if (isCompressor || tool.slug.includes('scrub')) {
-            doc.setTitle('');
-            doc.setAuthor('');
-            doc.setSubject('');
-            doc.setKeywords([]);
-            doc.setProducer('');
-            doc.setCreator('');
-          }
-          const pdfBytes = await doc.save({ useObjectStreams: true });
-          const origKb = (files[0].size / 1024).toFixed(1);
-          const newKb = (pdfBytes.length / 1024).toFixed(1);
-          const blob = new Blob([new Uint8Array(pdfBytes)], {
-            type: 'application/pdf',
-          });
-          setDownloadUrl(URL.createObjectURL(blob));
-          setDownloadName(`optimized-${files[0].name}`);
-          setStatusMessage(
-            isCompressor
-              ? `Optimized PDF (${total} pages): ${origKb} KB → ${newKb} KB (Target: ${targetKb} KB, lossless structural optimization applied).`
-              : `Successfully processed ${files[0].name} (${total} pages, ${newKb} KB)!`
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const vp = page.getViewport({ scale: renderScale });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.floor(vp.width));
+          canvas.height = Math.max(1, Math.floor(vp.height));
+          const ctx = canvas.getContext('2d');
+          if (!ctx) continue;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page.render({ canvasContext: ctx, viewport: vp, canvas }).promise;
+          const imgBlob = await new Promise<Blob | null>((r) =>
+            canvas.toBlob(r, imageFormatOut, 0.92)
           );
+          if (!imgBlob) continue;
+          const dlUrl = URL.createObjectURL(imgBlob);
+          urlsRef.current.push(dlUrl);
+          const outName = `${stem}-page-${p}.${ext}`;
+          pageOutputs.push({
+            id: `p_${p}_${Date.now()}`,
+            file: new File([imgBlob], outName, { type: imageFormatOut }),
+            status: 'done',
+            outputBlob: imgBlob,
+            downloadUrl: dlUrl,
+            downloadName: outName,
+            previewUrl: dlUrl,
+            extraBadge: `${canvas.width}x${canvas.height}`,
+          });
+        }
+
+        setGeneratedResults(pageOutputs);
+        setStatusMessage(`Rendered ${pageOutputs.length} PDF page(s) to ${ext.toUpperCase()} offline.`);
+        return;
+      }
+
+      if (mode === 'pdf-to-text') {
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        const raw = new Uint8Array(await entries[0].file.arrayBuffer());
+        const pdf = await pdfjs.getDocument({ data: raw }).promise;
+        const chunks: string[] = [];
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const tc = await page.getTextContent();
+          const lineText = tc.items
+            .map((it) => ('str' in it ? it.str : ''))
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          chunks.push(`--- Page ${p} ---\n${lineText}`);
+        }
+        const joined = chunks.join('\n\n');
+        setExtractedText(joined);
+        setStatusMessage(`Extracted text across ${pdf.numPages} PDF page(s) locally.`);
+        return;
+      }
+
+      // Per-PDF batch operations (compress, encrypt, split, rotate, watermark, page-numbers, metadata)
+      setEntries((prev) => prev.map((e) => ({ ...e, status: 'processing', error: undefined })));
+      const updatedEntries: PdfQueueEntry[] = [];
+
+      for (const entry of entries) {
+        try {
+          const raw = new Uint8Array(await entry.file.arrayBuffer());
+          let outBytes: Uint8Array;
+          let suffix = 'processed';
+
+          if (mode === 'encrypt') {
+            const { encryptPDF } = await import('@pdfsmaller/pdf-encrypt-lite');
+            outBytes = await encryptPDF(raw, userPassword.trim(), ownerPassword.trim() || userPassword.trim());
+            suffix = 'protected';
+          } else if (mode === 'compress') {
+            outBytes = await compressPdfAdaptive(raw, targetKb);
+            suffix = targetKb > 0 ? `${targetKb}kb-compressed` : 'compressed';
+          } else {
+            const doc = await PDFDocument.load(raw, { ignoreEncryption: true });
+            const pages = doc.getPages();
+
+            if (mode === 'split') {
+              const chosen = parsePageSelection(pageRange, pages.length);
+              const keepIndices = removeSelected
+                ? doc.getPageIndices().filter((idx) => !chosen.includes(idx))
+                : chosen;
+              if (keepIndices.length === 0) throw new Error('No pages matched selection.');
+              const outDoc = await PDFDocument.create();
+              const copied = await outDoc.copyPages(doc, keepIndices);
+              copied.forEach((p) => outDoc.addPage(p));
+              outBytes = await outDoc.save();
+              suffix = removeSelected ? 'trimmed' : 'extracted';
+            } else if (mode === 'rotate') {
+              pages.forEach((p) => {
+                const cur = p.getRotation().angle;
+                p.setRotation(degrees((cur + rotationAngle) % 360));
+              });
+              outBytes = await doc.save();
+              suffix = `rotated-${rotationAngle}`;
+            } else if (mode === 'watermark') {
+              const font = await doc.embedFont(StandardFonts.HelveticaBold);
+              const label = toWinAnsiSafe(watermarkText || 'CONFIDENTIAL');
+              pages.forEach((p) => {
+                const { width, height } = p.getSize();
+                p.drawText(label, {
+                  x: width * 0.22,
+                  y: height * 0.45,
+                  size: 38,
+                  font,
+                  color: rgb(0.55, 0.55, 0.55),
+                  rotate: degrees(35),
+                  opacity: 0.35,
+                });
+              });
+              outBytes = await doc.save();
+              suffix = 'watermarked';
+            } else if (mode === 'page-numbers') {
+              const font = await doc.embedFont(StandardFonts.Helvetica);
+              pages.forEach((p, idx) => {
+                const { width } = p.getSize();
+                p.drawText(`Page ${idx + 1} of ${pages.length}`, {
+                  x: width / 2 - 28,
+                  y: 22,
+                  size: 10,
+                  font,
+                  color: rgb(0.3, 0.3, 0.3),
+                });
+              });
+              outBytes = await doc.save();
+              suffix = 'numbered';
+            } else {
+              doc.setTitle(toWinAnsiSafe(metaTitle));
+              doc.setAuthor(toWinAnsiSafe(metaAuthor));
+              outBytes = await doc.save();
+              suffix = 'updated-meta';
+            }
+          }
+
+          const blob = makePdfBlob(outBytes);
+          const dlUrl = URL.createObjectURL(blob);
+          urlsRef.current.push(dlUrl);
+          const base = entry.file.name.replace(/\.pdf$/i, '') || 'document';
+          updatedEntries.push({
+            ...entry,
+            status: 'done',
+            outputBlob: blob,
+            downloadUrl: dlUrl,
+            downloadName: `${base}-${suffix}.pdf`,
+          });
+        } catch (err) {
+          updatedEntries.push({
+            ...entry,
+            status: 'error',
+            error: (err as Error).message,
+          });
         }
       }
-    } catch (err: unknown) {
-      setErrorMessage(`Error processing PDF: ${(err as Error).message}`);
+
+      setEntries(updatedEntries);
+      const okCount = updatedEntries.filter((e) => e.status === 'done').length;
+      if (okCount > 0) {
+        setStatusMessage(`Processed ${okCount} PDF ${okCount === 1 ? 'file' : 'files'} locally in browser RAM.`);
+      }
+    } catch (err) {
+      setErrorMessage((err as Error).message || 'PDF operation failed.');
     } finally {
       setProcessing(false);
     }
   };
 
+  const activeOutputFiles: File[] = useMemo(() => {
+    if (generatedResults.length > 0) {
+      return generatedResults
+        .filter((r) => r.outputBlob)
+        .map((r) => new File([r.outputBlob!], r.downloadName || r.file.name, { type: r.outputBlob!.type }));
+    }
+    const done = entries
+      .filter((e) => e.status === 'done' && e.outputBlob)
+      .map((e) => new File([e.outputBlob!], e.downloadName || e.file.name, { type: 'application/pdf' }));
+    return done.length > 0 ? done : entries.map((e) => e.file);
+  }, [generatedResults, entries]);
+
+  const handleDownloadAllZip = async () => {
+    const pool =
+      generatedResults.length > 1
+        ? generatedResults.filter((r) => r.outputBlob)
+        : entries.filter((e) => e.status === 'done' && e.outputBlob);
+    if (pool.length < 2) return;
+    setZipBusy(true);
+    try {
+      const zip = await createZipBlob(
+        pool.map((item) => ({
+          name: item.downloadName || item.file.name,
+          blob: item.outputBlob!,
+        }))
+      );
+      const url = URL.createObjectURL(zip);
+      urlsRef.current.push(url);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `snaptools-pdf-batch-${pool.length}.zip`;
+      a.click();
+    } finally {
+      setZipBusy(false);
+    }
+  };
+
+  const handlePipePdf = (targetSlugOrPath: string) => {
+    if (activeOutputFiles.length === 0) return;
+    pipeToTool(targetSlugOrPath, {
+      files: activeOutputFiles,
+      sourceToolSlug: tool.slug,
+    });
+  };
+
+  const displayRows: BatchQueueRow[] = (generatedResults.length > 0 ? generatedResults : entries).map((e) => ({
+    id: e.id,
+    name: e.downloadName || e.file.name,
+    originalSize: e.file.size,
+    outputSize: e.outputBlob?.size,
+    status: e.status,
+    previewUrl: e.previewUrl,
+    downloadUrl: e.downloadUrl,
+    downloadName: e.downloadName,
+    extraBadge: e.extraBadge,
+    error: e.error,
+  }));
+
   return (
-    <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
-      {mode === 'structured-generator' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-              Issuer / Company Name
+    <div className="space-y-6">
+      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xs space-y-6">
+        {/* Dropzone (unless generate mode) */}
+        {mode !== 'generate' && (
+          <SmartDropzone
+            accept={isImagesToPdf ? 'image/*,.png,.jpg,.jpeg,.webp' : '.pdf,application/pdf'}
+            multiple={mode !== 'pdf-to-image' && mode !== 'pdf-to-text'}
+            files={entries.map((e) => e.file)}
+            queueRows={displayRows}
+            onFilesAdded={handleFilesAdded}
+            onRemoveFile={(idx) => setEntries((prev) => prev.filter((_, i) => i !== idx))}
+            onClearAll={handleClearAll}
+            onDownloadAllZip={handleDownloadAllZip}
+            zipBusy={zipBusy}
+            title={
+              isImagesToPdf
+                ? 'Drop JPG, PNG or WebP images (or folder) to combine into PDF'
+                : 'Drop PDF file(s) or folder here — 0 KB server uploads'
+            }
+            subtitle="All PDF rendering, merging, and RC4 128-bit encryption execute locally in RAM"
+            accent="rose"
+          />
+        )}
+
+        {/* Mode-Specific Controls */}
+        {mode === 'compress' && (
+          <div className="p-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 space-y-3 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-600" /> Exam &amp; Visa Portal PDF Limit Presets
+              </div>
+              <select
+                onChange={(e) => {
+                  const found = PDF_PORTAL_PRESETS.find((p) => p.id === e.target.value);
+                  if (found) setTargetKb(found.targetKb);
+                }}
+                defaultValue=""
+                className="min-h-[44px] px-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-neutral-900 font-semibold"
+              >
+                <option value="">Choose Portal Limit Preset...</option>
+                {PDF_PORTAL_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="font-bold text-neutral-600 dark:text-neutral-300">
+                Target Max KB:
+              </label>
+              <input
+                type="number"
+                min={30}
+                max={20000}
+                value={targetKb}
+                onChange={(e) => setTargetKb(Number(e.target.value))}
+                className="w-28 min-h-[44px] px-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 font-mono"
+              />
+              {[100, 200, 300, 500].map((kb) => (
+                <button
+                  key={kb}
+                  type="button"
+                  onClick={() => setTargetKb(kb)}
+                  className={`min-h-[44px] px-3 rounded-xl font-bold cursor-pointer ${
+                    targetKb === kb
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700'
+                  }`}
+                >
+                  {kb} KB
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {mode === 'encrypt' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-950/20 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-neutral-500 mb-1">
+                Document Open Password (Required)
+              </label>
+              <input
+                type="password"
+                value={userPassword}
+                onChange={(e) => setUserPassword(e.target.value)}
+                placeholder="Enter secret PDF password..."
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-neutral-500 mb-1">
+                Owner / Permissions Password (Optional)
+              </label>
+              <input
+                type="password"
+                value={ownerPassword}
+                onChange={(e) => setOwnerPassword(e.target.value)}
+                placeholder="Defaults to open password"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"
+              />
+            </div>
+          </div>
+        )}
+
+        {mode === 'split' && (
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-neutral-500 mb-1">
+                Pages (e.g., 1-2, 4)
+              </label>
+              <input
+                type="text"
+                value={pageRange}
+                onChange={(e) => setPageRange(e.target.value)}
+                className="w-48 min-h-[44px] px-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 font-mono"
+              />
+            </div>
+            <label className="flex items-center gap-2 font-semibold cursor-pointer pt-5">
+              <input
+                type="checkbox"
+                checked={removeSelected}
+                onChange={(e) => setRemoveSelected(e.target.checked)}
+                className="w-4 h-4 accent-rose-600"
+              />
+              Delete selected pages instead of extracting
+            </label>
+          </div>
+        )}
+
+        {mode === 'rotate' && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-bold text-neutral-500">Rotation Angle:</span>
+            {[90, 180, 270].map((deg) => (
+              <button
+                key={deg}
+                type="button"
+                onClick={() => setRotationAngle(deg)}
+                className={`min-h-[44px] px-4 rounded-xl font-bold cursor-pointer ${
+                  rotationAngle === deg
+                    ? 'bg-rose-600 text-white'
+                    : 'bg-neutral-100 dark:bg-neutral-800'
+                }`}
+              >
+                {deg}&deg;
+              </button>
+            ))}
+          </div>
+        )}
+
+        {mode === 'watermark' && (
+          <div className="text-xs max-w-sm">
+            <label className="block text-[11px] font-bold uppercase text-neutral-500 mb-1">
+              Diagonal Stamp Text
             </label>
             <input
               type="text"
-              value={invoiceName}
-              onChange={(e) => setInvoiceName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              value={watermarkText}
+              onChange={(e) => setWatermarkText(e.target.value)}
+              className="w-full min-h-[44px] px-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 font-semibold"
             />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-              Client / Recipient Name
-            </label>
+        )}
+
+        {mode === 'images-to-pdf' && (
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <span className="font-bold text-neutral-500">Paper Size:</span>
+            {Object.keys(PAPER_DIMS).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setImagePaper(p)}
+                className={`min-h-[44px] px-4 rounded-xl font-bold uppercase cursor-pointer ${
+                  imagePaper === p
+                    ? 'bg-rose-600 text-white'
+                    : 'bg-neutral-100 dark:bg-neutral-800'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {mode === 'pdf-to-image' && (
+          <div className="flex flex-wrap items-center gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-neutral-500">Format:</span>
+              <select
+                value={imageFormatOut}
+                onChange={(e) => setImageFormatOut(e.target.value as 'image/jpeg' | 'image/png')}
+                className="min-h-[44px] px-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 font-semibold"
+              >
+                <option value="image/jpeg">JPG</option>
+                <option value="image/png">PNG</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-neutral-500">DPI Scale:</span>
+              <select
+                value={renderScale}
+                onChange={(e) => setRenderScale(Number(e.target.value))}
+                className="min-h-[44px] px-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 font-semibold"
+              >
+                <option value={1.25}>Fast (1.25x)</option>
+                <option value={1.75}>HD (1.75x)</option>
+                <option value={2.5}>Print Crisp (2.5x)</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {mode === 'metadata' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <input
               type="text"
-              value={invoiceClient}
-              onChange={(e) => setInvoiceClient(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              value={metaTitle}
+              onChange={(e) => setMetaTitle(e.target.value)}
+              placeholder="Document Title"
+              className="min-h-[44px] px-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950"
             />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-              Amount / Value ($)
-            </label>
             <input
-              type="number"
-              value={invoiceAmount}
-              onChange={(e) => setInvoiceAmount(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              type="text"
+              value={metaAuthor}
+              onChange={(e) => setMetaAuthor(e.target.value)}
+              placeholder="Author Name"
+              className="min-h-[44px] px-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950"
             />
           </div>
-        </div>
-      ) : mode === 'text-generator' ? (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-              Document Title
-            </label>
+        )}
+
+        {mode === 'generate' && (
+          <div className="space-y-3 text-xs">
             <input
               type="text"
               value={docTitle}
               onChange={(e) => setDocTitle(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full min-h-[44px] px-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 font-bold"
             />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-              {tool.slug.includes('html')
-                ? 'HTML Markup Input'
-                : tool.slug.includes('markdown')
-                  ? 'Markdown Content'
-                  : 'Document Text Content'}
-            </label>
             <textarea
-              rows={9}
               value={docBody}
               onChange={(e) => setDocBody(e.target.value)}
-              className="w-full p-3.5 rounded-2xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              rows={8}
+              className="w-full p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 font-mono"
             />
           </div>
-        </div>
-      ) : mode === 'template-generator' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-              Line / Grid Spacing (pt)
-            </label>
-            <input
-              type="number"
-              min={10}
-              max={40}
-              value={templateGridSize}
-              onChange={(e) => setTemplateGridSize(Number(e.target.value))}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-      ) : mode === 'images-to-pdf' ? (
-        <div className="space-y-4">
-          <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl hover:border-blue-500 hover:bg-blue-50/20 dark:hover:bg-blue-950/20 cursor-pointer transition text-center group">
-            <ImageIcon className="w-10 h-10 text-neutral-400 group-hover:text-blue-500 mb-2 transition" />
-            <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-              Click or drag &amp; drop Image files here (JPG, PNG, WebP)
-            </span>
-            <span className="text-xs text-neutral-500 mt-1">
-              Select one or multiple images to combine into a single PDF document
-            </span>
-            <input
-              type="file"
-              accept="image/*"
-              multiple={true}
-              onChange={handleFileChange}
-              className="hidden"
-            />
-          </label>
+        )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                PDF Page Size
-              </label>
-              <select
-                value={imagePageSize}
-                onChange={(e) => setImagePageSize(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
-              >
-                {Object.entries(PAPER_SIZES).map(([key, info]) => (
-                  <option key={key} value={key}>
-                    {info.label}
-                  </option>
-                ))}
-                <option value="fit">Fit to Image Dimensions</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                Page Margin (px): {imageMargin}
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={60}
-                value={imageMargin}
-                onChange={(e) => setImageMargin(Number(e.target.value))}
-                className="w-full mt-2"
-              />
-            </div>
-          </div>
-
-          {(tool.slug.includes('metadata-editor') || tool.slug.includes('header-footer')) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                  {tool.slug.includes('header-footer') ? 'Header Text' : 'Document Title'}
-                </label>
-                <input
-                  type="text"
-                  value={metaTitle}
-                  onChange={(e) => setMetaTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                  {tool.slug.includes('header-footer') ? 'Footer Text' : 'Author Name'}
-                </label>
-                <input
-                  type="text"
-                  value={metaAuthor}
-                  onChange={(e) => setMetaAuthor(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
-                />
-              </div>
-            </div>
-          )}
-
-          {files.length > 0 && (
-            <div className="flex flex-wrap gap-2 text-xs">
-              {files.map((f, i) => (
-                <span
-                  key={i}
-                  className="px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5 font-mono"
-                >
-                  <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
-                  {f.name} ({(f.size / 1024).toFixed(1)} KB)
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl hover:border-blue-500 hover:bg-blue-50/20 dark:hover:bg-blue-950/20 cursor-pointer transition text-center group">
-            <Upload className="w-10 h-10 text-neutral-400 group-hover:text-blue-500 mb-2 transition" />
-            <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-              {isMerge
-                ? 'Click or drag & drop PDF files to merge'
-                : 'Click or drag & drop your PDF file here'}
-            </span>
-            <span className="text-xs text-neutral-500 mt-1">
-              {isMerge
-                ? 'Supports selecting multiple PDF documents at once'
-                : 'Processes 100% locally in your browser (.pdf)'}
-            </span>
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              multiple={isMerge}
-              onChange={handleFileChange}
-              className="hidden"
-            />
-          </label>
-
-          {isCompressor && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                  Target File Size (KB)
-                </label>
-                <input
-                  type="number"
-                  min={20}
-                  max={10000}
-                  value={targetKb}
-                  onChange={(e) => setTargetKb(Number(e.target.value))}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex items-end">
-                <p className="text-xs text-neutral-500 pb-2">
-                  Applies lossless PDF object stream compaction and removes unused metadata.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {isSplitOrDelete && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {tool.slug.includes('odd-even') ? (
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                    Pages to Extract
-                  </label>
-                  <select
-                    value={oddEvenMode}
-                    onChange={(e) => setOddEvenMode(e.target.value as 'odd' | 'even')}
-                    className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
-                  >
-                    <option value="odd">Odd Pages (1, 3, 5...)</option>
-                    <option value="even">Even Pages (2, 4, 6...)</option>
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                    {tool.slug.includes('delete')
-                      ? 'Pages to Delete (e.g. 2, 4-5)'
-                      : 'Page Range to Keep (e.g. 1-3, 5)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={pageRange}
-                    onChange={(e) => setPageRange(e.target.value)}
-                    placeholder="1-2, 4"
-                    className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm font-mono focus:outline-hidden"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {tool.slug.includes('watermark') && (
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                Watermark Text
-              </label>
-              <input
-                type="text"
-                value={watermarkText}
-                onChange={(e) => setWatermarkText(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
-              />
-            </div>
-          )}
-
-          {tool.slug.includes('rotat') && (
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                Rotation Angle
-              </label>
-              <select
-                value={rotationAngle}
-                onChange={(e) => setRotationAngle(Number(e.target.value))}
-                className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
-              >
-                <option value={90}>90° Clockwise</option>
-                <option value={180}>180° Upside Down</option>
-                <option value={270}>270° Counter-Clockwise</option>
-              </select>
-            </div>
-          )}
-
-          {(tool.slug.includes('metadata-editor') || tool.slug.includes('header-footer')) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                  {tool.slug.includes('header-footer') ? 'Header Text' : 'Document Title'}
-                </label>
-                <input
-                  type="text"
-                  value={metaTitle}
-                  onChange={(e) => setMetaTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                  {tool.slug.includes('header-footer') ? 'Footer Text' : 'Author Name'}
-                </label>
-                <input
-                  type="text"
-                  value={metaAuthor}
-                  onChange={(e) => setMetaAuthor(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-hidden"
-                />
-              </div>
-            </div>
-          )}
-
-          {files.length > 0 && (
-            <div className="flex flex-wrap gap-2 text-xs">
-              {files.map((f, i) => (
-                <span
-                  key={i}
-                  className="px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5 font-mono"
-                >
-                  <FileText className="w-3.5 h-3.5 text-blue-500" />
-                  {f.name} ({(f.size / 1024).toFixed(1)} KB)
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Action Button */}
-      <div className="flex flex-wrap items-center gap-4">
-        <button
-          onClick={handleProcessPdf}
-          disabled={
-            processing ||
-            ((mode === 'pdf-file' || mode === 'images-to-pdf') && files.length === 0)
-          }
-          className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-sm shadow-md shadow-blue-500/20 flex items-center gap-2 transition"
-        >
-          {processing ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" /> Processing...
-            </>
-          ) : (
-            <>
-              <Layers className="w-4 h-4" /> Run {tool.title}
-            </>
-          )}
-        </button>
-
-        {downloadUrl && (
-          <a
-            href={downloadUrl}
-            download={downloadName}
-            className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 flex items-center gap-2 transition"
+        {/* Primary Action Bar */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={processing || (mode !== 'generate' && entries.length === 0)}
+            onClick={processPdf}
+            className="min-h-[44px] px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md transition cursor-pointer"
           >
-            <Download className="w-4 h-4" /> Download Result ({downloadName})
-          </a>
+            {processing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : mode === 'encrypt' ? (
+              <Lock className="w-4 h-4" />
+            ) : mode === 'pdf-to-image' ? (
+              <ImageIcon className="w-4 h-4" />
+            ) : mode === 'pdf-to-text' ? (
+              <Type className="w-4 h-4" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            <span>
+              {mode === 'merge'
+                ? 'Merge All PDFs Locally'
+                : mode === 'encrypt'
+                  ? 'Password Protect PDF'
+                  : mode === 'pdf-to-image'
+                    ? 'Render PDF Pages to Images'
+                    : mode === 'pdf-to-text'
+                      ? 'Extract Plain Text'
+                      : mode === 'images-to-pdf'
+                        ? 'Create PDF from Images'
+                        : 'Run Locally'}
+            </span>
+          </button>
+
+          {generatedResults.length === 1 && generatedResults[0].downloadUrl && (
+            <a
+              href={generatedResults[0].downloadUrl}
+              download={generatedResults[0].downloadName}
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md transition"
+            >
+              <Download className="w-4 h-4" />
+              <span>
+                Download ({formatBytesCompact(generatedResults[0].outputBlob?.size || 0)})
+              </span>
+            </a>
+          )}
+        </div>
+
+        {errorMessage && (
+          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {errorMessage}
+          </div>
+        )}
+
+        {statusMessage && (
+          <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" /> {statusMessage}
+          </div>
+        )}
+
+        {extractedText && (
+          <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-rose-600" /> Extracted Plain Text
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(extractedText)}
+                  className="min-h-[36px] px-3 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-blue-600 hover:text-white flex items-center gap-1 cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" /> Copy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const blob = new Blob([extractedText], { type: 'text/plain' });
+                    const u = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = u;
+                    a.download = 'extracted-text.txt';
+                    a.click();
+                  }}
+                  className="min-h-[36px] px-3 rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 flex items-center gap-1 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" /> .TXT
+                </button>
+              </div>
+            </div>
+            <textarea
+              readOnly
+              value={extractedText}
+              rows={9}
+              className="w-full p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 font-mono text-xs"
+            />
+          </div>
         )}
       </div>
 
-      {/* Status Messages */}
-      {statusMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          {statusMessage}
-        </div>
+      {/* Continue Workflow Bar (PDF output chains -> Compress, Lock, Page Numbers, Sign PDF, JPG, Text) */}
+      {activeOutputFiles.length > 0 && mode !== 'pdf-to-text' && (
+        <WorkflowChainBar
+          currentSlug={tool.slug}
+          mode={mode === 'pdf-to-image' ? 'image' : isSplitOrDelete ? 'pdf-split' : 'pdf'}
+          onPipe={handlePipePdf}
+          disabled={processing}
+        />
       )}
 
-      {errorMessage && (
-        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {errorMessage}
-        </div>
-      )}
+      {/* Sticky Mobile Action Bar */}
+      <div className="sm:hidden sticky bottom-3 z-30">
+        <button
+          type="button"
+          disabled={processing || (mode !== 'generate' && entries.length === 0)}
+          onClick={processPdf}
+          className="w-full min-h-[48px] px-5 py-3 rounded-2xl bg-rose-600 text-white text-sm font-bold shadow-xl flex items-center justify-center gap-2 disabled:opacity-40"
+        >
+          {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          <span>Process PDF Locally</span>
+        </button>
+      </div>
     </div>
   );
 }

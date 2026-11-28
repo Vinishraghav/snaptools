@@ -4,6 +4,8 @@ import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import CookieConsent from '@/components/layout/CookieConsent';
+import PwaRegistrar from '@/components/layout/PwaRegistrar';
+import { WorkflowProvider } from '@/lib/workflowStore';
 import { SITE_URL, SITE_NAME, ADSENSE_CLIENT_ID } from '@/lib/siteConfig';
 import { TOTAL_TOOLS_LABEL } from '@/data/catalogMeta';
 
@@ -19,6 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  manifest: '/manifest.json',
   title: {
     default: `SnapTools - ${TOTAL_TOOLS_LABEL} Free Handcrafted Client-Side Micro-Tools`,
     template: '%s | SnapTools',
@@ -99,10 +102,13 @@ export default function RootLayout({
         )}
       </head>
       <body className="min-h-full flex flex-col bg-neutral-50/60 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 selection:bg-blue-600 selection:text-white">
-        <Header />
-        <main className="flex-1 w-full">{children}</main>
-        <Footer />
-        <CookieConsent />
+        <WorkflowProvider>
+          <PwaRegistrar />
+          <Header />
+          <main className="flex-1 w-full">{children}</main>
+          <Footer />
+          <CookieConsent />
+        </WorkflowProvider>
       </body>
     </html>
   );

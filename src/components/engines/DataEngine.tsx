@@ -52,7 +52,11 @@ function generateLuhnCard(prefix = '4532'): string {
   return digits.join('').replace(/(\d{4})/g, '$1 ').trim();
 }
 
+import WorkflowChainBar from '@/components/tools/WorkflowChainBar';
+import { useWorkflowStore } from '@/lib/workflowStore';
+
 export default function DataEngine({ tool }: { tool: ToolDef }) {
+  const { pipeToTool } = useWorkflowStore();
   const spec = (tool.spec ?? {}) as Record<string, unknown>;
   const specMockCount = typeof spec.mockCount === 'number' ? spec.mockCount : 10;
 
@@ -64,9 +68,7 @@ export default function DataEngine({ tool }: { tool: ToolDef }) {
   const [mockCount, setMockCount] = useState(specMockCount);
   const [regenTick, setRegenTick] = useState(0);
 
-  useEffect(() => {
-    setMockCount(typeof spec.mockCount === 'number' ? spec.mockCount : 10);
-  }, [tool.slug, spec.mockCount]);
+  // Initialized lazily per tool slug (ToolHost passes key={tool.slug})
 
   const calculateStats = (numbers: number[]) => {
     if (numbers.length === 0) return null;
@@ -92,7 +94,8 @@ export default function DataEngine({ tool }: { tool: ToolDef }) {
   };
 
   useEffect(() => {
-    const slug = tool.slug;
+    const timer = setTimeout(() => {
+      const slug = tool.slug;
 
     if (slug.includes('credit-card')) {
       const cards = Array.from({ length: Math.min(50, Math.max(1, mockCount)) }, (_, i) => {
@@ -301,6 +304,8 @@ export default function DataEngine({ tool }: { tool: ToolDef }) {
     }
 
     setOutputData(csvInput);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [csvInput, tool.slug, mockCount, regenTick]);
 
   const handleDownload = () => {
@@ -392,6 +397,19 @@ export default function DataEngine({ tool }: { tool: ToolDef }) {
           />
         </div>
       </div>
+      {tool.slug.toLowerCase().includes('json') && !tool.slug.toLowerCase().includes('json-to-') && outputData.trim() && (
+        <WorkflowChainBar
+          currentSlug={tool.slug}
+          mode="data"
+          onPipe={(targetSlug) => {
+            pipeToTool(targetSlug, {
+              files: [new File([outputData], 'converted.json', { type: 'application/json' })],
+              textPayload: outputData,
+              sourceToolSlug: tool.slug,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
